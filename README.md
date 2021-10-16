@@ -1,10 +1,14 @@
 # 近期计划：
 
-2021.10
+2021.10.17-
 
 安装pytorch，熟悉pytorch
 
 把机器学习基础实现一遍。
+
+[pytorch中文手册](https://github.com/zergtant/pytorch-handbook)
+
+[pytorch项目实战](https://github.com/yunjey/pytorch-tutorial)
 
 2021.11
 
