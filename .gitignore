@@ -1,3 +1,10 @@
 
 AI学习笔记.docx
 AI学习笔记.docx
+*.exe
+practice/CPP/helloworld.cpp.exe
+*.exe
+practice/CPP/.vscode/launch.json
+practice/CPP/.vscode/tasks.json
+practice/CPP/.vscode/settings.json
+*.pdf
