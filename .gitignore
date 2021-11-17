@@ -8,3 +8,6 @@ practice/CPP/.vscode/launch.json
 practice/CPP/.vscode/tasks.json
 practice/CPP/.vscode/settings.json
 *.pdf
+practice/CPP/helloworld.cpp.exe
+*.exe
+*.exe
