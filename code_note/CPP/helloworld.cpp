@@ -2,32 +2,27 @@
 #include <iostream>
 //需要引入 vector 头文件
 #include <vector>
+#include <map>
 using namespace std;
+vector<int> twoSum(vector<int>& nums, int target) {
+    map<int,int> a;
+    vector<int> b(2,-1);
+    int i,j;
+    for(i=0;i<nums.size();i++){
+        if(a.count(target-nums[i])>0){
+            b[1]=i;
+            b[0]=a[target-nums[i]];
+            break;
+        }
+        a[nums[i]]=i;
+    }
+    cout<<b[0]<<b[1]<<endl;
+    return b;
+}
 int main()
 {
-    vector<int> v{1,2,3,4,5,6,7,8,9,10}; //v被初始化成有10个元素
-    cout << "1:" << endl;
-    //size返回元素个数
-    for (int i = 0; i < v.size(); ++i)
-        cout << v[i] <<" "; //像普通数组一样使用vector容器
-    //创建一个正向迭代器，当然，vector也支持其他 3 种定义迭代器的方式
-    
-       cout << endl << "2:" << endl;
-       vector<int>::iterator i;
-    //用 != 比较两个迭代器
-    for (i = v.begin(); i != v.end(); ++i)
-        cout << *i << " ";
-    
-       cout << endl << "3:" << endl;
-    for (i = v.begin(); i < v.end(); ++i) //用 < 比较两个迭代器
-        cout << *i << " ";
-   
-       cout << endl << "4:" << endl;
-    i = v.begin();
-    while (i < v.end()) { //间隔一个输出
-        cout << *i << " ";
-        i += 2; // 随机访问迭代器支持 "+= 整数"  的操作
-    }
-   system("pause");
-   return 0;
+    vector<int> a={2,7,9,11};
+    twoSum(a,9);
+    system("pause");
+    return 0;
 }

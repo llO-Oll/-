@@ -11,3 +11,5 @@ practice/CPP/.vscode/settings.json
 practice/CPP/helloworld.cpp.exe
 *.exe
 *.exe
+*.json
+*.json
