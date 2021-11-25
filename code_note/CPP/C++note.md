@@ -206,7 +206,7 @@ r2 = 0;				//	错误：r2是一个常量引用
 
 #### 指针和const
 
-与引用一样，也可以令指针指向常量或非常量。类似于常量引用，**指向常量的指针**不能用于改变其所指对象的值。要想存放常量对象的地址，只能使用指向常量的指针：
+与引用一样，也可以令指针指向常量或非常量。类似于常量引用，**指向常量的指针**不能用于改变其所指对象的值。**要想存放常量对象的地址，只能使用指向常量的指针**：
 
 ```c++
 const double pi = 3.14;		//	pi是个常量，它的值不能改变
@@ -588,6 +588,8 @@ int main(int argc, char **argv){...}
 
 以上面提供的命令行为例。
 
+
+
 ```c++
 // argc等于5
 argv[0] = "prog";
@@ -600,9 +602,130 @@ argv[5] = 0;
 
 
 
+------
+
 # 类
 
 类的基本思想是**数据抽象**(data abstraction)和**封装**(encapsulation)。数据抽象是一种依赖于**接口**(interface)和**实现**(implementation)分离的编程技术。类的接口包括用户所能执行的操作；类的实现则包括累的数据成员、负责接口实现的函数体以及定义类所需的各种私有函数。
 
+## 定义类
 
+```c++
+struct Sales_data{
+    //	新成员：关于Sales_data对象的操作
+    std::string isbn() const { return bookNo; }
+    Sales_data& combine (const Sales_data&);
+    double avg_price() const;
+    //	数据成员
+	std::string bookNo;
+    unsigned units_sold = 0;
+    double revenue = 0.0;
+};
+//	Sales_data的非成员接口函数
+Sales_data add(const Sales_data&, const Sales_data&);
+std::ostream &print(std::ostream&,const Sales_data&);
+std::istream &read(std::istream&, Sales_data&);
+```
+
+### 定义成员函数
+
+对于Sales_data类，`isbn()`函数定义在了类内，而`combine`和`avg_price`定义在了类外。
+
+我们首先介绍`isbn`函数，它的参数列表为空，返回值是一个string对象
+
+```c++
+std::string isbn() const { return bookNo; }
+```
+
+和其他函数一样，成员函数体也是一个块。在此例中，块只有一条`return`语句，用于返回`Sales_data`对象的`bookNo`数据成员。关于`isbn`函数一件有意思的事情是：它是如何获得`bookNo`成员所依赖的对象的呢？
+
+### 引入this
+
+让我们再一次观察对`isbn`成员函数的调用：
+
+```
+total.isbn()
+```
+
+在这里，我们使用了点运算符来访问total对象的`isbn`成员，然后调用它。当我们调用成员函数时，实际上是在替某个对象调用它。当`isbn`使用`bookNo`时，它隐式地使用this指向的成员，就像我们书写了`this->bookNo`一样。`this`形参是隐式定义的。
+
+### 引入const成员函数
+
+`isbn`函数的另一个关键之处是紧随参数列表之后的`const`关键字，这里，`const`的作用是修改隐式`this`指针的类型。
+
+**默认情况下，this的类型是指向类中非常量的常量指针。**例如在`Sales_data`成员函数中，`this`的类型是`Sales_data *const`。尽管`this`是隐式的，但它仍然需要遵循初始化规则，我们需要把this声明成`const Sales_data *const`。
+
+然而，`this`是隐式的并且不会出现在参数列表中，所以在哪儿将`this`声明成指向常量的指针就成为我们必须面对的问题。C++语言的做法是允许把 `const`关键字放在成员函数的参数列表之后，此时，紧跟在参数列表后面的 `const`表示`this`是一个指向常量的指针。像这样使用`const`的成员函数被称作**常量成员函数**。
+
+因为this是指向常量的指针，所以常量成员函数不能改变调用它的对象的内容。在上例中，`isbn`可以读取调用它的对象的数据成员，但是不能写入新值。
+
+### 类作用域和成员函数
+
+类本身就是一个作用域。类的成员函数的定义嵌套在类的作用域之内。
+
+### 在类的外部定义成员函数
+
+```c++
+double Sales_data::avg_price() const {
+	if (units_sold)
+		return revenue/units_sold;
+	else
+		return 0;
+}
+```
+
+函数名`Sales_data::avg_price`使用作用域运算符说明`avg_price`函数被声明在类`Sales_data`的作用域。
+
+### 定义一个返回this对象的函数
+
+函数`combine`的设计初衷类似于复合赋值运算符`+=`，调用该函数的对象代表运算符左侧的运算对象，右侧运算对象则通过显式的实参被传入函数：
+
+```c++
+Sales_data& Sales_data::combine(const Sales_data &rhs){
+    units_sold += rhs.units_sold;	//把rhs的成员加到this对象的成员上
+    revenue += rhs.revenue;
+    return *this;					// 返回调用该函数的对象
+}
+```
+
+当我们的交易处理程序调用如下的函数时，
+
+```
+total.combine(trans);
+```
+
+`total`的地址被绑定到隐式的`this`参数上，而`rhs`绑定到了trans上。因此，当combine执行下面的语句时，
+
+```c++
+units_sold += rhs.units_sold;	//	把rhs的成员添加到this对象的成员中
+```
+
+效果等同于求`total. units_sold`和`trans. unit_sold`的和，然后把结果保存到
+`total. units_sold`中。
+
+```c++
+return *this;	//	返回调用该函数的对象
+```
+
+
+
+### 构造函数
+
+```c++
+struct Sales_data{
+    //新增的构造函数
+    Sales_data() = default;
+    Sales_data(const std::string &s):bookNo(s) { }
+    Sales_data(const std::string &s,unsigned n, double p):
+                bookNo(s), units_sold(n), revenue(p*n) {}
+    Sales_data(std::istream &);
+    //之前已有的其他成员
+    std::string isbn() const {	return bookNo;}
+	Sales_data& combine(const Sales_data&);
+    double avg_price() const;
+    std::string bookNo;
+    unsigned units_sold = 0;
+    double revenue = 0.0;
+}
+```
 
