@@ -825,6 +825,49 @@ cout << "The value" << val
     << (result == vec.cend() ? "is not present" : " is present") << endl;
 ```
 
+## 泛型算法类型
+
+### 只读算法
+
+### 写容器元素的算法
+
+
+
+```c++
+vector<int> vec;//	空vector
+//fill_n()接受一个单迭代器、一个计数值和一个值，将给定值赋予迭代器指向的元素开始的指定个元素
+fill_n(vec.begin(),vec.size(),0);//将所有元素重置为0
+
+```
+
+非常容易犯的错误
+
+```c++
+vector<int> vec;//	空vector
+//	灾难：修改vec中的10个(不存在)元素
+fill_n(vec.begin(),10,0);
+```
+
+**back_inserter**
+
+一种保证算法有足够元素空间来容纳输出数据的方法是使用**插入迭代器**。插入迭代器是一种向容器中添加元素的迭代器。通常情况，当我们通过一个迭代器向容器元素赋值时，值被赋予迭代器指向的元素。而当我们通过一个插入迭代器赋值时，一个与赋值号右侧值相等的元素被添加到容器中。
+
+```c++
+vector<int> vec;	//	空向量
+auto it = back_inserter(vec);	//	通过它赋值会将元素添加到vec中
+*it = 42;	//	vec中现在有一个元素，值为42
+```
+
+```c++
+vector<int> vec;	//	空向量
+//	正确：back_inserter创建一个插入选代器，可用来向vec添加元素
+fill_n(back_inserter(vec),10,0);	//添加10个元素到vec
+```
+
+### 重排容器元素的算法
+
+## 定制操作
+
 
 
 ------
