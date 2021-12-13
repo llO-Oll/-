@@ -864,9 +864,181 @@ vector<int> vec;	//	空向量
 fill_n(back_inserter(vec),10,0);	//添加10个元素到vec
 ```
 
+**拷贝算法**
+
+拷贝(copy)算法是另一个向目的位置迭代器指向的输出序列中的元素写入数据的算法。此算法接受三个迭代器，前两个表示一个输入范围，第三个表示目的序列的起始位置。此算法将输入范围中的元素拷贝到目的序列中。传递给copy的目的序列至少要包含与输入序列一样多的元素，这一点很重要。
+
+```c++
+int a1[] = {0,1,2,3,4,5,6};
+int a2[sizeof(a1)/sizeof(*a1)];	//	a2与a1大小一样	数组元素个数 = 数组大小 / 单个元素的大小
+//	copy返回的是其目的位置迭代器递增后的值	ret指向拷贝到a2的尾元素之后的位置
+auto ret = copy(begin(a1),end(a1),a2);	//	把a1的内容拷贝给a2
+
+```
+
 ### 重排容器元素的算法
 
 ## 定制操作
+
+### 向算法传递函数
+
+#### 谓词
+
+谓词是一个可调用表达式，其返回结果是一个能用作条件的值。
+
+```c++
+//	比较函数，用来按长度排序单词
+bool isShorter(const string &s1, const string &s2)
+{
+	return s1.size() < s2.size();
+}
+//	按长度由短至长排序words
+sort(words.begin(),words.end(),isShorter);
+```
+
+### lambda表达式
+
+C++11的一大亮点就是引入了Lambda表达式。利用Lambda表达式，**可以方便的定义和创建匿名函数**。
+
+lambda表达式有如下优点：
+
+- 声明式编程风格：就地匿名定义目标函数或函数对象，不需要额外写一个命名函数或者函数对象。以更直接的方式去写程序，好的可读性和可维护性。
+- 简洁：不需要额外再写一个函数或者函数对象，避免了代码膨胀和功能分散，让开发者更加集中精力在手边的问题，同时也获取了更高的生产率。
+- 在需要的时间和地点实现功能闭包，使程序更灵活。
+
+
+
+lambda 表达式定义了一个匿名函数，并且可以捕获一定范围内的变量。lambda 表达式的语法形式可简单归纳如下：
+
+```
+[capture list](parameter list) -> retrun type { function body }
+```
+
+其中， capture list（捕获列表）是一个 lambda所在函数中定义的局部变量的列表（通常为空）； `return type`、` parameter list`和 `function body`与任何普通函数一样，分别表示返回类型参数列表和函数体。但是，与普通函数不同， lambda必须使用尾置返回来指定返回类型。
+
+可以忽略列表和返回类型，但必须永远包含捕获列表和函数体
+
+```c++
+auto f = []{ return 42; };
+cout << f() << endl;	//	打印42
+```
+
+#### 使用 lambda 表达式捕获列表
+
+lambda 表达式还可以通过捕获列表捕获一定范围内的变量：
+
+- `[]` 不捕获任何变量。
+- `[&]` 捕获外部作用域中所有变量，并作为引用在函数体中使用（按引用捕获）。
+- `[=]` 捕获外部作用域中所有变量，并作为副本在函数体中使用（按值捕获）。
+- `[=，&foo]` 按值捕获外部作用域中所有变量，并按引用捕获 foo 变量。
+- `[bar]` 按值捕获 bar 变量，同时不捕获其他变量。
+- `[this]` 捕获当前类中的 this [指针](http://c.biancheng.net/c/80/)，让lambda表达式拥有和当前类成员函数同样的访问权限。如果已经使用了&或者=，就默认添加此选项。捕获 this 的目的是可以在lambda中使用当前类的成员函数和成员变量。
+
+【实例】lambda 表达式的基本用法。
+
+```c++
+class A
+{
+    public:
+    int i_ = 0;
+    void func(int x, int y)
+    {
+        auto x1 = []{ return i_; };        // error，没有捕获外部变量
+        auto x2 = [=]{ return i_ + x + y; }; // OK，捕获所有外部变量
+        auto x3 = [&]{ return i_ + x + y; }; // OK，捕获所有外部变量
+        auto x4 = [this]{ return i_; };      // OK，捕获this指针
+        auto x5 = [this]{ return i_ + x + y; };// error，没有捕获x、y
+        auto x6 = [this, x, y]{ return i_ + x + y; };// OK，捕获this指针、x、y
+        auto x7 = [this]{ return i_++; };// OK，捕获this指针，并修改成员的值
+    }
+};
+int a = 0, b = 1;
+auto f1 = []{ return a; };             // error，没有捕获外部变量
+auto f2 = [&]{ return a++; };          // OK，捕获所有外部变量，并对a执行自加运算
+auto f3 = [=]{ return a; };            // OK，捕获所有外部变量，并返回a
+auto f4 = [=]{ return a++; };          // error，a是以复制方式捕获的，无法修改
+auto f5 = [a]{ return a + b; };        // error，没有捕获变量b
+auto f6 = [a, &b]{ return a + (b++); };// OK，捕获a和b的引用，并对b做自加运算
+auto f7 = [=, &b]{ return a + (b++); };// OK，捕获所有外部变量和b的引用，并对b做自加运算
+```
+
+#### lambda 表达式的类型
+
+lambda 表达式的类型在 C++11 中被称为“闭包类型（Closure Type）”。它是一个特殊的，匿名的非union的类类型。
+
+因此，我们可以认为它是一个带有 operator() 的类，即仿函数。因此，我们可以使用 `std::function` 和 `std::bind` 来存储和操作 lambda 表达式：
+
+
+
+```c++
+std::function<int(int)>  f1 = [](int a){ return a; };
+std::function<int(void)> f2 = std::bind([](int a){ return a; }, 123);
+
+
+```
+
+另外，对于没有捕获任何变量的 lambda 表达式，还可以被转换成一个普通的函数指针：
+
+```c++
+using func_t = int(*)(int);
+func_t f = [](int a){ return a; };
+f(123);
+```
+
+lambda 表达式可以说是就地定义仿函数闭包的“语法糖”。它的捕获列表捕获住的任何外部变量，最终均会变为闭包类型的成员变量。而一个使用了成员变量的类的 operator()，如果能直接被转换为普通的函数指针，那么 lambda 表达式本身的 this 指针就丢失掉了。而没有捕获任何外部变量的 lambda 表达式则不存在这个问题。
+
+这里也可以很自然地解释为何按值捕获无法修改捕获的外部变量。因为按照 C++ 标准，lambda 表达式的 operator() 默认是 const 的。一个 const 成员函数是无法修改成员变量的值的。而 mutable 的作用，就在于取消 operator() 的 const。
+
+需要注意的是，没有捕获变量的 lambda 表达式可以直接转换为函数指针，而捕获变量的 lambda 表达式则不能转换为函数指针。看看下面的代码：
+
+```c++
+typedef void(*Ptr)(int*);
+Ptr p = [](int* p){delete p;};  // 正确，没有状态的lambda（没有捕获）的lambda表达式可以直接转换为函数指针
+Ptr p1 = [&](int* p){delete p;};  // 错误，有状态的lambda不能直接转换为函数指针
+```
+
+就地定义匿名函数，不再需要定义函数对象，大大简化了标准库算法的调用。比如，在 C++11 之前，我们要调用 for_each 函数将 vector 中的偶数打印出来，如下所示。
+
+【实例】lambda 表达式代替函数对象的示例。
+
+```c++
+class CountEven
+{
+    int& count_;
+public:
+    CountEven(int& count) : count_(count) {}
+    void operator()(int val)
+    {
+        if (!(val & 1))       // val % 2 == 0
+        {
+            ++ count_;
+        }
+    }
+};
+std::vector<int> v = { 1, 2, 3, 4, 5, 6 };
+int even_count = 0;
+for_each(v.begin(), v.end(), CountEven(even_count));
+std::cout << "The number of even is " << even_count << std::endl;
+```
+
+这样写既烦琐又容易出错。有了 lambda 表达式以后，我们可以使用真正的闭包概念来替换掉这里的仿函数，代码如下：
+
+```c++
+std::vector<int> v = { 1, 2, 3, 4, 5, 6 };
+int even_count = 0;
+for_each( v.begin(), v.end(), [&even_count](int val)
+        {
+            if (!(val & 1))  // val % 2 == 0
+            {
+                ++ even_count;
+            }
+        });
+std::cout << "The number of even is " << even_count << std::endl;
+```
+
+lambda 表达式的价值在于，就地封装短小的功能闭包，可以极其方便地表达出我们希望执行的具体操作，并让上下文结合得更加紧密。
+
+
 
 
 
