@@ -747,6 +747,12 @@ struct Sales_data{
 
 
 
+## 构造函数再探
+
+
+
+
+
 ------
 
 # IO类
@@ -1139,3 +1145,118 @@ r = q;	//	给r赋值，令它指向另一个地址
  
 
 #### ……shared_ptr还会自动释放相关联的内存
+
+
+
+```c++
+//	factory返回一个shared_ptr，指向一个动态分配的对象
+shared_ptr<Foo> factory(T arg)
+{
+    //	恰当处理arg
+    //	shared_ptr负责释放内存
+    return make_shared<Foo>(arg);
+}
+```
+
+
+
+```c++
+void use_factory(T arg)
+{
+	shared_ptr<Foo> p = factory(arg);
+	//	使用p
+}	//	p离开了作用域，他指向的内存会被自动释放掉
+```
+
+由于p是use_ factory的局部变量，在use_ factory结東时它将被销毁。当p被销毁时，将递减其引用计数并检査它是否为0。在此例中，p是唯一引用 factory返回的内存的对象。由于p将要销毁，p指向的这个对象也会被销毁，所占用的内存会被释放。
+
+但如果有其他shared_ptr也指向这块内存，它就不会被释放掉：
+
+```c++
+void use_factory(T arg)
+{
+	shared_ptr<Foo> p = factory(arg);
+	//	使用p
+    //	向此函数的调用者返回一个p的拷贝
+	return p;
+}	//	p离开了作用域，但它指向的内存不会被释放掉
+```
+
+### 直接管理内存
+
+#### 使用new动态分配和初始化对象
+
+```c++
+int *pi = new int;	//	pi指向一个动态分配的、未初始化的无名对象
+```
+
+```c++
+int *pi = new int(1024);	//	pi指向一个未初始化的int
+string *ps = new string(10,'9');	//	*ps为“9999999999”
+//	vector有10个元素，值依次从0到9
+vector<int> *pv = new vector<int>{0,1,2,3,4,5,6,7,8,9};
+```
+
+#### 动态分配的const对象
+
+用new分配const对象是合法的：
+
+```c++
+//	分配并初始化一个const int
+const int *pci = new const int(1024);
+//	分配并默认初始化一个const的空string
+const string *pcs = new const string;
+```
+
+#### 内存耗尽
+
+```c++
+//	如果分配失败，new返回一个空指针
+int *p1 = new int;	//	如果分配失败，new抛出std::bad_alloc
+int *p2 = new (nothrow) int;	//如果分配失败，new返回一个空指针
+```
+
+#### 释放动态内存
+
+少用！
+
+```c++
+delete p;	//	p必须指向一个动态分配的对象或是一个空指针
+```
+
+### shared_ptr和new结合使用
+
+```c++
+shared_ptr<int> p2(new int(42));	//	p2指向一个值为42的int
+```
+
+接受指针参数的智能指针构造函数是`explicit`的。因此，我们不能将一个内置指针隐式转换为一个智能指针，必须使用直接初始化形式来初始化一个智能指针:
+
+```c++
+shared_ptr<int> p1 = new int(1024);	//	错误：必须使用直接初始化形式
+shared_ptr<int> p2(new int(1024));	//	正确：使用了直接初始化形式
+```
+
+p1的初始化隐式地要求编译器用一个new返回的int*来创建一个shared_ptr。由于我们不能进行内置指针到智能指针的隐式转换，因此这条语句是错误的。
+
+```c++
+shared_ptr<int> clone(int p){
+	return new int(p);	//	错误：隐式转换为shared_ptr<int>
+}
+```
+
+
+
+```c++
+shared_ptr<int> clone(int p){
+	//	正确：显示地用int*创建shared_ptr<int。
+	return shared_ptr<int>(new int(p))
+}
+```
+
+### unique_ptr
+
+### weak_ptr
+
+## 动态数组
+
