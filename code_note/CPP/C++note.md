@@ -1289,7 +1289,7 @@ up.release();	//	自动用delete[]销毁其指针
 
 ### 拷贝构造函数
 
-如果一个构造函数的第一个参数时自身类型的引用，且任何额外参数都有默认值，则此构造函数是拷贝函数。
+如果一个构造函数的第一个参数是自身类型的引用，且任何额外参数都有默认值，则此构造函数是拷贝构造函数。
 
 ```c++
 class Foo {
@@ -1297,5 +1297,58 @@ public:
 	Foo();			//	默认构造函数
 	Foo(const Foo&);	//	拷贝构造函数
 };
+```
+
+#### 合成拷贝函数
+
+一般情况，合成的拷贝构造函数会将其参数的成员逐个拷贝到正在创建的对象中。编译器从给定对象中依次将每个非static成员拷贝到正在创建的对象中。
+
+
+
+```c++
+class Sales_data {
+public:
+	//	其他成员和构造函数的定义、如前
+	//	与合成的拷贝构造函数等价的拷贝构造函数的声明
+	Sales_data(const Sales_data&);
+private:
+	std::string bookNo;
+	int units_sold = 0;
+	double revenue =0.0;
+};
+//	与Sales_data的合成的拷贝构造函数等价
+Sales_data::Sales_data(const Sales_data &orig):
+	bookNo(orig.bookNo),		//	使用string的拷贝构造函数
+	units_sold(orig.units_sold),//	拷贝orig.units_sold
+	revenue(orig.revenue)		//	拷贝orig.revenue
+    {	}						//	空函数体
+```
+
+#### 拷贝初始化
+
+```c++
+string dots(10,'.');				//	直接初始化
+srting s(dots);						//	直接初始化
+string s2 = dots;					//	拷贝初始化
+string null_book = "9-999-99999-9";	//	拷贝初始化
+string nines = string(100,'9');		//	拷贝初始化
+```
+
+当使用直接初始化时，编译器使用普通的函数匹配来选择与我们提供的参数最匹配的构造函数。当我们使用拷贝初始化时，我们要求编译器将右侧运算对象拷贝到正在创建的对象中，如果需要的话还要进行类型转换。
+
+拷贝初始化不仅在我们用`=`定义变量时会发生，在下列情况下也会发生
+
+1. 将一个对象作为实参传递给一个非引用类型的形参
+2. 从一个返回类型为非引用类型的函数返回一个对象
+3. 用花括号列表初始化一个数组中的元素或者一个聚合类中的成员
+
+#### 拷贝初始化的限制
+
+
+
+```
+vector<int> v1(10);
+vector<int> v2 = 10;
+void f(vector<int>);
 ```
 
