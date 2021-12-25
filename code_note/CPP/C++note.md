@@ -1299,3 +1299,70 @@ public:
 };
 ```
 
+### 拷贝赋值运算符
+
+```c++
+Sales_data trans, accum;
+trans = accum;	//	使用Sales_data的拷贝赋值运算符
+```
+
+#### 重载赋值运算符
+
+重载运算符本质上是函数，其名字由`operator`关键字后接表示要定义的运算符的符号组成。重载运算符
+
+
+
+### 析构函数
+
+析构函数执行与构造函数相反的操作：构造函数初始化对象的非static数据成员，**析构函数释放对象使用的资源，并销毁对象的非static数据成员。**
+
+```c++
+class Foo {
+public:
+	~Foo();	//	析构函数
+}
+```
+
+
+
+## 右值引用
+
+
+
+------
+
+# 操作重载与类型转换
+
+
+
+### 显式的类型转换运算符
+
+`explicit`的作用是用来声明类构造函数是显示调用的，而非隐式调用，所以只用于修饰单参构造函数。因为无参构造函数和多参构造函数本身就是显示调用的。
+
+```c++
+#include <iostream>
+using namespace std;
+
+class Test1	{
+public:
+    Test1(int num):n(num){}
+private:
+    int n;
+};
+class Test2	{
+public：
+    explicit Test2(int num):n(num){}
+private:
+    int n;
+}
+//编译时，会指出t3那一行error:无法从“int”转换为“Test2”。而t1却编译通过。注释掉t3那行，调试时，t1已被赋值成功。
+int main()
+{
+    Test1 t1 = 12;
+    Test2 t2(13);
+    Test2 t3 = 14;
+    
+    return 0;
+}
+```
+
