@@ -232,11 +232,9 @@ const double *const pip = &pi;	//	pip是一个指向常量对象的常量指针
 
 ```c++
 *pip = 2.72;				//	错误：pip是一个指向常量的指针
-
 if (*curErr){
 	*curErr = 0;			//	正确：把curErr所指的对象的值重置
 }
-
 ```
 
 #### 顶层const
@@ -500,6 +498,39 @@ for(int i=0; i<v.size(); ++i)
 # 表达式
 
 
+
+
+
+# 语句
+
+## for循环
+
+### 范围for语句
+
+```c++
+for(declaration : expression)
+	statement
+```
+
+`expression`表示的是一个序列，比如用花括号括起来的初始值**列表、数组或者vector或者string等类型**的对象，这些类型的共同特点是拥有能返回迭代器的begin和end成员。
+
+`declaration`定义一个变量，序列中的每个元素都得能转换成该变量的类型。**最简单的方法是使用`auto`类型说明符。**
+
+```c++
+vector<int> v = { 0,1,2,3,4,5,6,7,8,9};
+//	范围变量必须是引用类型，这样才能对元素执行写操作
+for (auto &r : v)	//	对于v中的每一个元素
+	r *= 2;			//	将v中每个元素的值翻倍
+```
+
+以上代码等同于：
+
+```c++
+for (auto beg = v.begin(),end = v.end(); beg != end; ++beg){
+	auto &r = beg;	//	r必须是引用类型，这样才能对元素执行写操作
+	r *= 2;			//	将v中每个元素的值翻倍
+}
+```
 
 
 
