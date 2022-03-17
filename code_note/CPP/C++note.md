@@ -273,7 +273,13 @@ auto item = val1 + val2;	//item初始化为val1和val2相加的结果，item类�
 
 #### `decltype`类型指示符
 
+从表达式的类型自动推出要定义的变量的类型，但是不想用该表达式的值初始化变量。
 
+```c++
+decltype(f()) sum = x;	//	sum的类型就是函数f的返回类型
+```
+
+编译器并不实际调用函数`f`,而是使用当调用发生时`f`的返回值作为sum的类型。换句话说，编译器为`sum`指定的类型是什么呢？就是假如`f`被调用的话将会返回的那个类型。
 
 # 字符串、向量和数组
 
@@ -688,7 +694,7 @@ total.isbn()
 
 然而，`this`是隐式的并且不会出现在参数列表中，所以在哪儿将`this`声明成指向常量的指针就成为我们必须面对的问题。C++语言的做法是允许把 `const`关键字放在成员函数的参数列表之后，此时，紧跟在参数列表后面的 `const`表示`this`是一个指向常量的指针。像这样使用`const`的成员函数被称作**常量成员函数**。
 
-因为this是指向常量的指针，所以常量成员函数不能改变调用它的对象的内容。在上例中，`isbn`可以读取调用它的对象的数据成员，但是不能写入新值。
+因为this是指向常量的指针，所以**常量成员函数不能改变调用它的对象的内容。在上例中，`isbn`可以读取调用它的对象的数据成员，但是不能写入新值。**
 
 ### 类作用域和成员函数
 
@@ -1343,6 +1349,8 @@ trans = accum;	//	使用Sales_data的拷贝赋值运算符
 
 
 
+
+
 ### 析构函数
 
 析构函数执行与构造函数相反的操作：构造函数初始化对象的非static数据成员，**析构函数释放对象使用的资源，并销毁对象的非static数据成员。**
@@ -1405,7 +1413,144 @@ int main()
 }
 ```
 
+## 重载运算符
 
+C++中预定义的运算符的操作对象只能是基本数据类型。但实际上，对于许多用户自定义类型（例如类），也需要类似的运算操作。这时就必须在C++中重新定义这些运算符，赋予已有运算符新的功能，使它能够用于特定类型执行特定的操作。运算符重载的实质是函数重载，它提供了C++的可扩展性，也是C++最吸引人的特性之一。 
+
+　　运算符重载是通过创建运算符函数实现的，运算符函数定义了重载的运算符将要进行的操作。运算符函数的定义与其他函数的定义类似，惟一的区别是运算符函数的函数名是由关键字operator和其后要重载的运算符符号构成的。运算符函数定义的一般格式如下：
+
+```
+<返回类型说明符> operator <运算符符号>(<参数表>) {      
+	<函数体> 
+}
+```
+
+## 函数调用运算符
+
+如果类重载了函数调用运算符，则我们可以像使用函数一样使用该类的对象。因为这样的类同时也能存储状态，所以与普通函数相比它们更加灵活。
+举个简单的例子，下面这个名为absInt的struct含有一个调用运算符，该运算符负责返回其参数的绝对值：
+
+```c++
+struct absInt{
+	int operator() (int val) const {
+		return val < 0 ? -val : val;
+	}
+};
+```
+
+这个类只定义了一种操作：函数调用运算符，他负责接受一个int类型的实参，然后返回改实参的绝对值。
+
+```c++
+int i = -42;
+absInt absObj;			//	含有函数调用运算符的对象
+int ui = absObj(i);		//	将i传递给absObj.operator()
+```
+
+即使`absObj`只是一个对象而非函数，我们也能调用该对象。调用对象实际上是在运行重载的调用运算符。在此例中，该运算符接受一个int值并返回其绝对值。
 
 # OOP
+
+
+
+# 优先队列
+
+## 定义
+
+`priority_queue<type, container, functional>`
+
+type 就是数据类型，container 就是容器类型（container必须是用数组实现的容器，比如vector,deque等等，但不能用 list。STL里面默认用的是vector），functional 就是比较的方式。
+
+```
+和队列基本操作相同:
+
+top 访问队头元素
+empty 队列是否为空
+size 返回队列内元素个数
+push 插入元素到队尾 (并排序)
+emplace 原地构造一个元素并插入队列
+pop 弹出队头元素
+swap 交换内容
+```
+
+
+
+```c++
+//升序队列
+priority_queue<int, vector<int>,greater<int> > q;
+//降序队列
+priority_queue<int, vector<int>,less<int> > q;
+
+
+```
+
+```c++
+//自定义
+#include <iostream>
+#include <queue>
+using namespace std;
+//方法一
+struct tmp1
+{
+    int x;
+    tmp1(int a){x = a;}
+    bool operator<(const tmp1& a) const
+    {
+        return x < a.x;//大顶堆
+    }
+}
+
+//方法二
+struct tmp2
+{
+    bool operator()(tmp1 a,tmp1 b)
+    {
+        return a.x < b.x;//大顶堆
+    }
+}
+int main(){
+    tmp1 a(1);
+    tmp1 b(2);
+    tmp1 c(3);
+    priority_queue<tmp1> d;
+    d.push(b);
+    d.push(c);
+    d.push(a);
+    while(!d.empty())
+    {
+        cout <<d.top().x << '\n';
+        d.pop();
+    }
+    cout << endl;
+    
+    priority_queue<tmp1,vector<tmp1>,tmp2> f;
+    f.push(b);
+    f.push(c);
+    f.push(a);
+    while!(f.empty()){
+        cout << f.top().x << '\n';
+        f.pop;
+    }
+}
+
+```
+
+# 栈
+
+```c++
+#include<stack>
+
+stack<int> q;	//以int型为例
+int x;
+q.push(x);		//将x压入栈顶
+q.top();		//返回栈顶的元素
+q.pop();		//删除栈顶的元素
+q.size();		//返回栈中元素的个数
+q.empty();		//检查栈是否为空，若为空返回true，否则返回false
+```
+
+
+
+# 模板和范型编程
+
+## 定义模板
 
