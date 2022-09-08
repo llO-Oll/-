@@ -43,11 +43,11 @@ $$
 $$
 这里，对于所有的j总有$0≤\hat{y_j}≤1$。 因此，$\hat{y_j}$可以视为一个正确的概率分布。 softmax运算不会改变未规范化的预测o之间的顺序，只会确定分配给每个类别的概率。 因此，在预测过程中，我们仍然可以用下式来选择最有可能的类别。
 
-## 损失函数
+## 交叉熵损失函数
 
 接下来，我们需要一个损失函数来度量预测的效果。 我们将使用最大似然估计，这与在线性回归中的方法相同。
 
-### 
+
 
 softmax函数给出了一个向量$\hat{y}$， 我们可以将其视为“对给定任意输入x的每个类的条件概率”。 例如，$\hat{y_1}=P(y=猫∣x)$。 假设整个数据集{X,Y}具有n个样本， 其中索引i的样本由特征向量$x^{(i)}$和独热标签向量$y^{(i)}$组成。 我们可以将估计值与实际值进行比较：
 $$
@@ -118,3 +118,112 @@ $$
 \frac{\mathrm{d} }{\mathrm{d} \theta} \ln L(\theta|x)=0
 $$
 上式也通常被称作**对数似然方程**
+
+# 多层感知机(MLP:multilayer perceptron)
+
+结构如下
+
+![../_images/mlp.svg](DL.assets/mlp.svg)
+
+通过矩阵$X \in\mathbb{R}^{n\times d} $来表示n个样本的小批量，其中每个样本具有d个输入特征。对于具有h个隐藏单元的单隐藏层多层感知机， 用$H \in\mathbb{R}^{n\times h} $表示隐藏层的输出， 称为*隐藏表示*
+$$
+\begin{split}\begin{aligned}
+    \mathbf{H} & = \mathbf{X} \mathbf{W}^{(1)} + \mathbf{b}^{(1)}, \\
+    \mathbf{O} & = \mathbf{H}\mathbf{W}^{(2)} + \mathbf{b}^{(2)}.
+\end{aligned}\end{split}
+$$
+注意在添加隐藏层之后，模型现在需要跟踪和更新额外的参数。 可我们能从中得到什么好处呢？ 你可能会惊讶地发现：在上面定义的模型里，我们没有好处！ 原因很简单：上面的隐藏单元由输入的仿射函数给出， 而输出（softmax操作前）只是隐藏单元的仿射函数。 仿射函数的仿射函数本身就是仿射函数， 但是我们之前的线性模型已经能够表示任何仿射函数。
+
+
+
+### 从线性到非线性
+
+为了发挥多层架构的潜力， 我们还需要一个额外的关键要素： 在仿射变换之后对每个隐藏单元应用非线性的*激活函数*（activation function）σ。 激活函数的输出（例如，σ(⋅)）被称为*活性值*（activations）。 一般来说，有了激活函数，就不可能再将我们的多层感知机退化成线性模型：
+$$
+\begin{split}\begin{aligned}
+    \mathbf{H} & = \sigma(\mathbf{X} \mathbf{W}^{(1)} + \mathbf{b}^{(1)}), \\
+    \mathbf{O} & = \mathbf{H}\mathbf{W}^{(2)} + \mathbf{b}^{(2)}.\\
+\end{aligned}\end{split}
+$$
+
+## 激活函数
+
+### ReLU函数
+
+$$
+\operatorname{ReLU}(x) = \max(x, 0).
+$$
+
+### sigmoid函数
+
+$$
+\operatorname{sigmoid}(x) = \frac{1}{1 + \exp(-x)}.
+$$
+
+### tanh函数
+
+$$
+\operatorname{tanh}(x) = \frac{1 - \exp(-2x)}{1 + \exp(-2x)}.
+$$
+
+# Dropout
+
+
+
+# 前向传播
+
+![image-20220414194713208](DL.assets/image-20220414194713208.png)
+
+前向传播计算图
+
+![../_images/forward.svg](DL.assets/forward.svg)
+
+
+
+# 反向传播
+
+![image-20220414200015444](DL.assets/image-20220414200015444.png)
+
+![image-20220414200027933](DL.assets/image-20220414200027933.png)
+
+![image-20220414200212805](DL.assets/image-20220414200212805.png)
+
+# 卷积
+
+![image-20220418103656395](DL.assets/image-20220418103656395.png)
+
+输出大小等于输入大小$n_k \times n_w$减去卷积核大小$k_h \times k_w$，即：
+$$
+(n_h-k_h+1) \times (n_w-k_w+1)
+$$
+
+## 互相关运算
+
+```python
+import torch
+from torch import nn
+from d2l import torch as d2l
+
+def corr2d(X,K):
+
+	h,w=K.shape
+	Y = torch.zeros((X.shape[0] - h + 1,X.shape[1] - w + 1))
+	for i in range(Y.shape[0]):
+		for j in range(Y.shape[1]):
+			Y[i,j] = (X[i:i = h,j:j + w]*K).sum()
+	return Y
+```
+
+## 卷积层
+
+```python
+class Conv2D(nn.Module):
+	def __init__(self,kernel_size):
+		super().__init__()
+		self.weight = nn.Parameter(torch.rand(kernel_size))
+		self.bias = nn.Parameter(torch.zeros(1))
+		
+	def forward(self,x):
+		return corr2d(x, self.weight) + self.bias
+```
+

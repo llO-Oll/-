@@ -20,8 +20,6 @@ std::cout << "Enter two number:" << std::endl;
 
 # 基本类型
 
-
-
 ## 复合类型
 
 ### 引用
@@ -35,24 +33,21 @@ int &refVal12;
 
 refVal = 2;
 int ii = refVal;
-int &refVal13=refVal;	//refVal13绑定到了那个refVal绑定的对象上，这里就是绑定到ival上。
-
+int &refVal13=refVal;    //refVal13绑定到了那个refVal绑定的对象上，这里就是绑定到ival上。
 ```
 
 ```c++
 //引用的定义
 int i = 1024, i2 = 2048;
-int &r = i, r2 =i2;		//r是一个引用，与i绑定在一起，r2是int
+int &r = i, r2 =i2;        //r是一个引用，与i绑定在一起，r2是int
 int i3 = 1024, &ri = i3;//ri是一个引用，与i3绑定在一起
-int &r3 = i3, &r4 = i2;	//r3和r4都是引用
+int &r3 = i3, &r4 = i2;    //r3和r4都是引用
 
 //错误的定义
-int &refVal4 = 10;	//错误：引用类型的初始值必须是一个对象
+int &refVal4 = 10;    //错误：引用类型的初始值必须是一个对象
 doubel dval = 3.14;
 int &refVal5 = dval;//错误：此处引用类型的初始值必须为是int型对象
 ```
-
-
 
 ### 指针
 
@@ -62,15 +57,15 @@ int &refVal5 = dval;//错误：此处引用类型的初始值必须为是int型�
 
 ```c++
 int ival = 42;
-int *p = &ival;	//p存放变量ival的地址，或者说p是指向变量的指针	
+int *p = &ival;    //p存放变量ival的地址，或者说p是指向变量的指针    
 ```
 
 ```c++
 double dval;
-double *pd = &dval;	//	正确：初始值是double型对象的地址
-double *pd2 =pd;	//	正确：初始值是指向double对象的指针
+double *pd = &dval;    //    正确：初始值是double型对象的地址
+double *pd2 =pd;    //    正确：初始值是指向double对象的指针
 
-int *pi = pd;		//	错误：指针pi的类型和pd的类型不匹配
+int *pi = pd;        //    错误：指针pi的类型和pd的类型不匹配
 ```
 
 #### 指针值
@@ -88,15 +83,15 @@ int *pi = pd;		//	错误：指针pi的类型和pd的类型不匹配
 
 ```c++
 int ival = 42;
-int *p = &ival;	//	p存放者ival的地址，或者说p是指向变量ival的指针
-cout << *p;		//	由符号*得到指针p所指向的对象，输出42
+int *p = &ival;    //    p存放者ival的地址，或者说p是指向变量ival的指针
+cout << *p;        //    由符号*得到指针p所指向的对象，输出42
 ```
 
 对指针解引用会得出所指的对象，因此如果给解引用的结果赋值，实际上也就是给指针所指的对象赋值；
 
 ```c++
-*p = 0;		//	由符号*得到指针p所指向的对象，即可经由p为变量ival赋值
-cout << *p;	//	由符号*得到指针p所指的对象，输出42
+*p = 0;        //    由符号*得到指针p所指向的对象，即可经由p为变量ival赋值
+cout << *p;    //    由符号*得到指针p所指的对象，输出42
 ```
 
 **`&`和`*`的多重含义**
@@ -105,11 +100,11 @@ cout << *p;	//	由符号*得到指针p所指的对象，输出42
 
 ```c++
 int i = 42;
-int &r = i;		//	&紧随类型名出现，是声明的一部分，r是一个引用
-int *p;			//	*紧随类型名出现，是神明的一部分，p是一个指针
-p = &i;			//	&出现在表达式中，取地址符
-*p = i;			//	*出现在表达式中，解引用符
-int &r2 = *p;	//	&是声明的一部分，*是一个解引用符
+int &r = i;        //    &紧随类型名出现，是声明的一部分，r是一个引用
+int *p;            //    *紧随类型名出现，是神明的一部分，p是一个指针
+p = &i;            //    &出现在表达式中，取地址符
+*p = i;            //    *出现在表达式中，解引用符
+int &r2 = *p;    //    &是声明的一部分，*是一个解引用符
 ```
 
 #### 空指针
@@ -117,30 +112,30 @@ int &r2 = *p;	//	&是声明的一部分，*是一个解引用符
 生成空指针的方法：
 
 ```c++
-int *p1 = nullptr;	//	等效于int *p1 = 0;
-int *p2	= 0;		//	直接将p2初始化为字面常量0;
+int *p1 = nullptr;    //    等效于int *p1 = 0;
+int *p2    = 0;        //    直接将p2初始化为字面常量0;
 ```
 
 把`int`变量直接复制给指针是错误的操作，即使`int`变量的值恰好等于0也不行。
 
 ```c++
 int zero = 0;
-pi = zero;		//	错误：不能把int变量直接赋值给指针
+pi = zero;        //    错误：不能把int变量直接赋值给指针
 ```
 
 #### 赋值和指针
 
 ```c++
 int i = 42;
-int *pi = 0;		//	pi被初始化，但没有指向任何对象
-int *pi2 = &i;		//	pi2被初始化，存有i的地址
-int *pi3;			//	如果pi3定义于块内，则pi3的值是无法确定的
+int *pi = 0;        //    pi被初始化，但没有指向任何对象
+int *pi2 = &i;        //    pi2被初始化，存有i的地址
+int *pi3;            //    如果pi3定义于块内，则pi3的值是无法确定的
 
-pi3 = pi2;			//	pi3和pi2指向同一个对象i
-pi2 = 0;			//	现在pi2不指向任何对象
+pi3 = pi2;            //    pi3和pi2指向同一个对象i
+pi2 = 0;            //    现在pi2不指向任何对象
 
-pi = ival;			//	pi的值被改变，现在pi指向了ival
-*pi = 0;			//	ival的值被改变，指针pi并没有改变
+pi = ival;            //    pi的值被改变，现在pi指向了ival
+*pi = 0;            //    ival的值被改变，指针pi并没有改变
 ```
 
 #### void* 指针
@@ -151,23 +146,20 @@ pi = ival;			//	pi的值被改变，现在pi指向了ival
 
 ```c++
 int ival = 1024;
-int *pi = &ival;	//	pi指向一个int的数
-int **ppi = &pi;	//	ppi指向一个int的指针
+int *pi = &ival;    //    pi指向一个int的数
+int **ppi = π    //    ppi指向一个int的指针
 ```
 
 #### 指向指针的引用
 
 ```c++
 int i = 42;
-int *p;			//	p是一个int型指针
-int *&r = p;	//	r是一个对指针p的引用
+int *p;            //    p是一个int型指针
+int *&r = p;    //    r是一个对指针p的引用
 
-r = &i;			//	r引用了一个指针，因此给r赋值&i
+r = &i;            //    r引用了一个指针，因此给r赋值&i
 *r = 0;
-
 ```
-
-
 
 ### `const`限定符
 
@@ -179,29 +171,29 @@ r = &i;			//	r引用了一个指针，因此给r赋值&i
 
 ```c++
 const int ci = 1024;
-const int &r1 = ci;		//	正确：引用及其对应的对象都是常量
-r1 = 42;				//	错误：r1是对常量的引用，常量
-int &r2 = ci;			//	错误：试图让一个非常量引用指向一个常量对象
+const int &r1 = ci;        //    正确：引用及其对应的对象都是常量
+r1 = 42;                //    错误：r1是对常量的引用，常量
+int &r2 = ci;            //    错误：试图让一个非常量引用指向一个常量对象
 ```
 
 **允许一个常量引用绑定非常量的对象、字面值，甚至是个一般表达式：**
 
 ```c++
-int i = 42;				
-const int &r1 = i;		//允许将const int&绑定到一个普通int对象上
-const int &r2 = 42;		//正确：r2是一个常量引用
-const int &r3 = r1 * 2;	//正确：r3是一个常量引用
-int &r4 = r1 * 2;		//错误：r4是一个普通的非常量引用
+int i = 42;                
+const int &r1 = i;        //允许将const int&绑定到一个普通int对象上
+const int &r2 = 42;        //正确：r2是一个常量引用
+const int &r3 = r1 * 2;    //正确：r3是一个常量引用
+int &r4 = r1 * 2;        //错误：r4是一个普通的非常量引用
 ```
 
 **常量引用如果引用一个并非const的对象，不能通过常量引用改变绑定对象的值。**
 
 ```c++
 int i = 42;
-int &r1 = i;		//	引用ri绑定对象i
-const int &r2 = i;	//	r2也绑定对象i,但是不允许通过r2修改i的值
-r1 = 0;				//	r1也并非常量，i的值修改为0
-r2 = 0;				//	错误：r2是一个常量引用
+int &r1 = i;        //    引用ri绑定对象i
+const int &r2 = i;    //    r2也绑定对象i,但是不允许通过r2修改i的值
+r1 = 0;                //    r1也并非常量，i的值修改为0
+r2 = 0;                //    错误：r2是一个常量引用
 ```
 
 #### 指针和const
@@ -209,10 +201,10 @@ r2 = 0;				//	错误：r2是一个常量引用
 与引用一样，也可以令指针指向常量或非常量。类似于常量引用，**指向常量的指针**不能用于改变其所指对象的值。**要想存放常量对象的地址，只能使用指向常量的指针**：
 
 ```c++
-const double pi = 3.14;		//	pi是个常量，它的值不能改变
-double *ptr = &pi;			//	错误：ptr是一个普通指针
-const double *cptr = &pi;	//	正确：cptr可以指向一个双精度常量
-*cptr = 42;					//	错误：不能给*cptr赋值
+const double pi = 3.14;        //    pi是个常量，它的值不能改变
+double *ptr = π            //    错误：ptr是一个普通指针
+const double *cptr = π    //    正确：cptr可以指向一个双精度常量
+*cptr = 42;                    //    错误：不能给*cptr赋值
 ```
 
 #### const指针
@@ -221,9 +213,9 @@ const double *cptr = &pi;	//	正确：cptr可以指向一个双精度常量
 
 ```c++
 int errNumb = 0;
-int *const curErr = &errNumb;	//	curErr将一直指向errNumb
+int *const curErr = &errNumb;    //    curErr将一直指向errNumb
 const double pi = 3.14159;
-const double *const pip = &pi;	//	pip是一个指向常量对象的常量指针
+const double *const pip = π    //    pip是一个指向常量对象的常量指针
 ```
 
 要想弄清楚这些声明的含义最行之有效的办法是从右向左阅读。此例中，离`curErr`最近的符号是`const`,意味着`curErr`本身是一个常量对象，对象的类型由声明符的其余部分确定。**声明符中的下一个符号是`*`,意思是`curErr`是一个常量指针。**
@@ -231,9 +223,9 @@ const double *const pip = &pi;	//	pip是一个指向常量对象的常量指针
 `pip`是一个指向常量的常量指针，不论是pip所指的对象值还是pip自己存储的那个地址都不能改变。相反的，`curErr`指向的是一个一般非常量整数，可以用`curErr`去修改`errNumb`的值：
 
 ```c++
-*pip = 2.72;				//	错误：pip是一个指向常量的指针
+*pip = 2.72;                //    错误：pip是一个指向常量的指针
 if (*curErr){
-	*curErr = 0;			//	正确：把curErr所指的对象的值重置
+    *curErr = 0;            //    正确：把curErr所指的对象的值重置
 }
 ```
 
@@ -248,27 +240,23 @@ if (*curErr){
 
 ```c++
 int i = 0;
-int *const p1 = &i;		//	不能改变p1的值，这是一个顶层const
-const int ci = 42;		//	不能改变ci的值，这是一个顶层const
-const int *p2 = &ci;	//	允许改变p2的值，这是一个底层const
-const int *const p3 = p2;	//	靠右的const是顶层const，靠左的是底层
-const int &r = ci;		//	用于声明引用的const都是底层const
+int *const p1 = &i;        //    不能改变p1的值，这是一个顶层const
+const int ci = 42;        //    不能改变ci的值，这是一个顶层const
+const int *p2 = &ci;    //    允许改变p2的值，这是一个底层const
+const int *const p3 = p2;    //    靠右的const是顶层const，靠左的是底层
+const int &r = ci;        //    用于声明引用的const都是底层const
 ```
-
-
 
 ### 处理类型
 
 #### 类型别名`typedef`
-
-
 
 #### `auto`类型说明符
 
 自动分析表达式所属的类型。
 
 ```c++
-auto item = val1 + val2;	//item初始化为val1和val2相加的结果，item类型与他俩一致。
+auto item = val1 + val2;    //item初始化为val1和val2相加的结果，item类型与他俩一致。
 ```
 
 #### `decltype`类型指示符
@@ -276,14 +264,12 @@ auto item = val1 + val2;	//item初始化为val1和val2相加的结果，item类�
 从表达式的类型自动推出要定义的变量的类型，但是不想用该表达式的值初始化变量。
 
 ```c++
-decltype(f()) sum = x;	//	sum的类型就是函数f的返回类型
+decltype(f()) sum = x;    //    sum的类型就是函数f的返回类型
 ```
 
 编译器并不实际调用函数`f`,而是使用当调用发生时`f`的返回值作为sum的类型。换句话说，编译器为`sum`指定的类型是什么呢？就是假如`f`被调用的话将会返回的那个类型。
 
 # 字符串、向量和数组
-
-
 
 ## 命名空间的`using`声明
 
@@ -304,7 +290,7 @@ using std::string;
 string s1;
 string s2 = s1;
 string s3 = "hiya";
-string s4(10,'c');		//s4的内容是cccccccccc
+string s4(10,'c');        //s4的内容是cccccccccc
 ```
 
 ### string对象的操作
@@ -326,10 +312,10 @@ s1==s2
 ```c++
 int main()
 {
-	string s;			//	空字符串
-	cin >> s;			//	将string对象读入s，遇到空白停止
-	cout << s << endl;	//	输出s
-	return 0;
+    string s;            //    空字符串
+    cin >> s;            //    将string对象读入s，遇到空白停止
+    cout << s << endl;    //    输出s
+    return 0;
 }
 ```
 
@@ -340,20 +326,18 @@ int main()
 ### 定义和初始化`vetor`对象
 
 ```c++
-vector<T> v1;		//v1是一个空vector，他潜在的元素是T类型
-vector<T> v2(v1);	//v2中包含有v1所有元素的副本
-vector<T> V2 = V1;	//等价于v2(v1),v2中包含有v1所有元素的副本
+vector<T> v1;        //v1是一个空vector，他潜在的元素是T类型
+vector<T> v2(v1);    //v2中包含有v1所有元素的副本
+vector<T> V2 = V1;    //等价于v2(v1),v2中包含有v1所有元素的副本
 vector<T> v3(n,val);//v3包含了n个重复的元素val
-
-
 ```
 
 ### vector的操作
 
 ```c++
-v.push_back(t)		//向v的尾端添加一个值为t的元素
-v.empty()			//如果v不含有任何元素，返回真；否则返回假
-v.size()			//返回v中元素的个数
+v.push_back(t)        //向v的尾端添加一个值为t的元素
+v.empty()            //如果v不含有任何元素，返回真；否则返回假
+v.size()            //返回v中元素的个数
 ```
 
 ## 迭代器
@@ -376,42 +360,38 @@ v.size()			//返回v中元素的个数
 
 3. 随机访问迭代器（random access iterator）
    随机访问迭代器具有双向迭代器的全部功能。除此之外，假设 p 是一个随机访问迭代器，i是一个整型变量或常量，则 p 还支持以下操作：
-
+   
    - p+=i：使得 p 往后移动i个元素。
-
+   
    - p-= i：使得 p 往前移动i个元素。
-
+   
    - p+ i：返回 p 后面第i个元素的迭代器。
-
+   
    - p- i：返回 p 前面第i个元素的迭代器。
-
+   
    - p[i]：返回 p 后面第i个元素的引用。
 
-     
-
-| 容器                               | 对应的迭代器类型 |
-| :--------------------------------- | :--------------- |
-| array                              | 随机访问迭代器   |
-| vector                             | 随机访问迭代器   |
-| deque                              | 随机访问迭代器   |
-| list                               | 双向迭代器       |
-| set / multiset                     | 双向迭代器       |
-| map / multimap                     | 双向迭代器       |
-| forward_list                       | 前向迭代器       |
-| unordered_map / unordered_multimap | 前向迭代器       |
-| unordered_set / unordered_multiset | 前向迭代器       |
-| stack                              | 不支持迭代器     |
-| queue                              | 不支持迭代器     |
-
-
+| 容器                                 | 对应的迭代器类型 |
+|:---------------------------------- |:-------- |
+| array                              | 随机访问迭代器  |
+| vector                             | 随机访问迭代器  |
+| deque                              | 随机访问迭代器  |
+| list                               | 双向迭代器    |
+| set / multiset                     | 双向迭代器    |
+| map / multimap                     | 双向迭代器    |
+| forward_list                       | 前向迭代器    |
+| unordered_map / unordered_multimap | 前向迭代器    |
+| unordered_set / unordered_multiset | 前向迭代器    |
+| stack                              | 不支持迭代器   |
+| queue                              | 不支持迭代器   |
 
 ### 迭代器定义
 
-| 迭代器定义方式 | 具体格式                                     |
-| -------------- | -------------------------------------------- |
-| 正向迭代器     | `容器类名::iterator 迭代器名;`               |
+| 迭代器定义方式 | 具体格式                                 |
+| ------- | ------------------------------------ |
+| 正向迭代器   | `容器类名::iterator 迭代器名;`               |
 | 常量正向迭代器 | `容器类名::const_iterator 迭代器名;`         |
-| 反向迭代器     | `容器类名::reverse_iterator 迭代器名;`       |
+| 反向迭代器   | `容器类名::reverse_iterator 迭代器名;`       |
 | 常量反向迭代器 | `容器类名::const_reverse_iterator 迭代器名;` |
 
 通过定义以上几种迭代器，就可以读取它指向的元素，`*迭代器名`就表示迭代器指向的元素。其中，常量迭代器和非常量迭代器的分别在于，通过非常量迭代器还能修改其指向的元素。另外，反向迭代器和正向迭代器的区别在于：
@@ -433,17 +413,17 @@ int main()
     for (int i = 0; i < v.size(); ++i)
         cout << v[i] <<" "; //像普通数组一样使用vector容器
     //创建一个正向迭代器，当然，vector也支持其他 3 种定义迭代器的方式
-    
+
        cout << endl << "2:" << endl;
        vector<int>::iterator i;
     //用 != 比较两个迭代器
     for (i = v.begin(); i != v.end(); ++i)
         cout << *i << " ";
-    
+
        cout << endl << "3:" << endl;
     for (i = v.begin(); i < v.end(); ++i) //用 < 比较两个迭代器
         cout << *i << " ";
-   
+
        cout << endl << "4:" << endl;
     i = v.begin();
     while (i < v.end()) { //间隔一个输出
@@ -453,7 +433,6 @@ int main()
    system("pause");
    return 0;
 }
-
 ```
 
 ```c++
@@ -497,15 +476,9 @@ for(int i=0; i<v.size(); ++i)
     cout << v[i];
 ```
 
- ## 数组
-
-
+## 数组
 
 # 表达式
-
-
-
-
 
 # 语句
 
@@ -515,7 +488,7 @@ for(int i=0; i<v.size(); ++i)
 
 ```c++
 for(declaration : expression)
-	statement
+    statement
 ```
 
 `expression`表示的是一个序列，比如用花括号括起来的初始值**列表、数组或者vector或者string等类型**的对象，这些类型的共同特点是拥有能返回迭代器的begin和end成员。
@@ -524,21 +497,19 @@ for(declaration : expression)
 
 ```c++
 vector<int> v = { 0,1,2,3,4,5,6,7,8,9};
-//	范围变量必须是引用类型，这样才能对元素执行写操作
-for (auto &r : v)	//	对于v中的每一个元素
-	r *= 2;			//	将v中每个元素的值翻倍
+//    范围变量必须是引用类型，这样才能对元素执行写操作
+for (auto &r : v)    //    对于v中的每一个元素
+    r *= 2;            //    将v中每个元素的值翻倍
 ```
 
 以上代码等同于：
 
 ```c++
 for (auto beg = v.begin(),end = v.end(); beg != end; ++beg){
-	auto &r = beg;	//	r必须是引用类型，这样才能对元素执行写操作
-	r *= 2;			//	将v中每个元素的值翻倍
+    auto &r = beg;    //    r必须是引用类型，这样才能对元素执行写操作
+    r *= 2;            //    将v中每个元素的值翻倍
 }
 ```
-
-
 
 # 函数
 
@@ -558,8 +529,6 @@ for (auto beg = v.begin(),end = v.end(); beg != end; ++beg){
 
 ### const形参和实参
 
-
-
 ### 数组形参
 
 数组的两个特殊性质对我们定义和使用作用在数组上的函数有影响，这两个性质分别是：**不允许拷贝数组，使用数组时通常会将其转换成指针**。
@@ -573,33 +542,29 @@ for (auto beg = v.begin(),end = v.end(); beg != end; ++beg){
 //函数在处理C风格字符串时遇到空字符停止：
 void print(const char *cp)
 {
-	if (cp)					//	若cp不是一个空指针
-		while(*cp)			//	只要指针所指的字符不是空字符
-			count << *cp++;	//	输出当前字符并将指针向前移动一个位置
+    if (cp)                    //    若cp不是一个空指针
+        while(*cp)            //    只要指针所指的字符不是空字符
+            count << *cp++;    //    输出当前字符并将指针向前移动一个位置
 }
 ```
 
 *这种方法对于像int这样所有取值都是合法值得数据不适用。*
 
-
-
 #### 使用标准库规范
 
 ```c++
-void print(const int *beg,	const int *end)
+void print(const int *beg,    const int *end)
 {
-    //	输出beg到end之间(不含end)的所有元素
+    //    输出beg到end之间(不含end)的所有元素
     while(beg!=end)
-        cout << *beg++ << endl;//	输出当前元素并将指针向前移动一个位置
+        cout << *beg++ << endl;//    输出当前元素并将指针向前移动一个位置
 }
 
 int j[2] = {0,1};
-//	j转换成指向它首元素的指针
-//	第二个实参是指向j的尾后元素的指针
-print(begin(j),end(j));		//begin和end函数
+//    j转换成指向它首元素的指针
+//    第二个实参是指向j的尾后元素的指针
+print(begin(j),end(j));        //begin和end函数
 ```
-
-
 
 ### main：处理命令行选项
 
@@ -625,8 +590,6 @@ int main(int argc, char **argv){...}
 
 以上面提供的命令行为例。
 
-
-
 ```c++
 // argc等于5
 argv[0] = "prog";
@@ -636,8 +599,6 @@ argv[3] = "ofile";
 argv[4] = "data0";
 argv[5] = 0;
 ```
-
-
 
 ------
 
@@ -649,16 +610,16 @@ argv[5] = 0;
 
 ```c++
 struct Sales_data{
-    //	新成员：关于Sales_data对象的操作
+    //    新成员：关于Sales_data对象的操作
     std::string isbn() const { return bookNo; }
     Sales_data& combine (const Sales_data&);
     double avg_price() const;
-    //	数据成员
-	std::string bookNo;
+    //    数据成员
+    std::string bookNo;
     unsigned units_sold = 0;
     double revenue = 0.0;
 };
-//	Sales_data的非成员接口函数
+//    Sales_data的非成员接口函数
 Sales_data add(const Sales_data&, const Sales_data&);
 std::ostream &print(std::ostream&,const Sales_data&);
 std::istream &read(std::istream&, Sales_data&);
@@ -690,9 +651,11 @@ total.isbn()
 
 `isbn`函数的另一个关键之处是紧随参数列表之后的`const`关键字，这里，`const`的作用是修改隐式`this`指针的类型。
 
+一个检查但不改变其对象状态的成员函数叫做**访问函数**，而改变状态的函数叫做**修改函数**。默认情况下，所有的成员函数都是修改函数。将成员函数从修改函数变为访问函数，必须在参数类型表列的封闭圆括号的后面加上关键字`const`
+
 **默认情况下，this的类型是指向类中非常量的常量指针。**例如在`Sales_data`成员函数中，`this`的类型是`Sales_data *const`。尽管`this`是隐式的，但它仍然需要遵循初始化规则，我们需要把this声明成`const Sales_data *const`。
 
-然而，`this`是隐式的并且不会出现在参数列表中，所以在哪儿将`this`声明成指向常量的指针就成为我们必须面对的问题。C++语言的做法是允许把 `const`关键字放在成员函数的参数列表之后，此时，紧跟在参数列表后面的 `const`表示`this`是一个指向常量的指针。像这样使用`const`的成员函数被称作**常量成员函数**。
+然而，`this`是隐式的并且不会出现在参数列表中，所以在哪儿将`this`声明成指向常量的指针就成为我们必须面对的问题。C++语言的做法是允许把 `const`关键字放在成员函数的参数列表之后，此时，紧跟在参数列表后面的 `const`表示`this`是一个指向常量的指针。像这样使用`const`的成员函数被称作**常量成员函数**,或者**访问函数**。
 
 因为this是指向常量的指针，所以**常量成员函数不能改变调用它的对象的内容。在上例中，`isbn`可以读取调用它的对象的数据成员，但是不能写入新值。**
 
@@ -704,10 +667,10 @@ total.isbn()
 
 ```c++
 double Sales_data::avg_price() const {
-	if (units_sold)
-		return revenue/units_sold;
-	else
-		return 0;
+    if (units_sold)
+        return revenue/units_sold;
+    else
+        return 0;
 }
 ```
 
@@ -719,9 +682,9 @@ double Sales_data::avg_price() const {
 
 ```c++
 Sales_data& Sales_data::combine(const Sales_data &rhs){
-    units_sold += rhs.units_sold;	//把rhs的成员加到this对象的成员上
+    units_sold += rhs.units_sold;    //把rhs的成员加到this对象的成员上
     revenue += rhs.revenue;
-    return *this;					// 返回调用该函数的对象
+    return *this;                    // 返回调用该函数的对象
 }
 ```
 
@@ -734,17 +697,15 @@ total.combine(trans);
 `total`的地址被绑定到隐式的`this`参数上，而`rhs`绑定到了trans上。因此，当combine执行下面的语句时，
 
 ```c++
-units_sold += rhs.units_sold;	//	把rhs的成员添加到this对象的成员中
+units_sold += rhs.units_sold;    //    把rhs的成员添加到this对象的成员中
 ```
 
 效果等同于求`total. units_sold`和`trans. unit_sold`的和，然后把结果保存到
 `total. units_sold`中。
 
 ```c++
-return *this;	//	返回调用该函数的对象
+return *this;    //    返回调用该函数的对象
 ```
-
-
 
 ### 构造函数
 
@@ -757,8 +718,8 @@ struct Sales_data{
                 bookNo(s), units_sold(n), revenue(p*n) {}
     Sales_data(std::istream &);
     //之前已有的其他成员
-    std::string isbn() const {	return bookNo;}
-	Sales_data& combine(const Sales_data&);
+    std::string isbn() const {    return bookNo;}
+    Sales_data& combine(const Sales_data&);
     double avg_price() const;
     std::string bookNo;
     unsigned units_sold = 0;
@@ -782,33 +743,29 @@ struct Sales_data{
 
 `private`说明符后的成员可以被类的成员函数访问。
 
-
-
 ## 构造函数再探
-
-
-
-
 
 ------
 
 # IO类
 
+c++使用标准库类处理面向流的输入和输出：
 
-
-
+- iostream处理控制台IO
+- fstream处理文件IO
+- stringstream完成内存string的IO
 
 ------
 
 # 顺序容器
 
-| 顺序容器类型 |                                          |
-| ------------ | ---------------------------------------- |
-| vector       | 可变大小数组                             |
-| deque        | 双端队列                                 |
-| list         | 双向链表                                 |
-| forward_list | 单向链表                                 |
-| array        | 固定大小数组                             |
+| 顺序容器类型       |                         |
+| ------------ | ----------------------- |
+| vector       | 可变大小数组                  |
+| deque        | 双端队列                    |
+| list         | 双向链表                    |
+| forward_list | 单向链表                    |
+| array        | 固定大小数组                  |
 | string       | 与vector相似的容器，但专门用于保存字符。 |
 
 ## 容器概览
@@ -818,25 +775,24 @@ struct Sales_data{
 每个容器类型都定义了一个默认构造函数。除array之外，其他容器的默认构造函数都会创建一个指定类型的空容器，且都可以接受指定容器大小和元素初始值的参数。
 
 ```c++
-//	默认构造函数，C如果是array，则c中元素按默认方式初始化；否则为空
-C c;		
+//    默认构造函数，C如果是array，则c中元素按默认方式初始化；否则为空
+C c;        
 
-//	c1初始化为c2的拷贝。c1和c2必须是相同类型
-C c1(c2)	
+//    c1初始化为c2的拷贝。c1和c2必须是相同类型
+C c1(c2)    
 C C1=C2
- 
-//	c初始化为初始化列表中元素的拷贝。列表中元素的类型必须与C的元素类型相容。对于array类型，列表中元素数目必须等于或小于array的大小，任何遗漏的元素都进行值初始化。
-C c{a,b,c…}		
+
+//    c初始化为初始化列表中元素的拷贝。列表中元素的类型必须与C的元素类型相容。对于array类型，列表中元素数目必须等于或小于array的大小，任何遗漏的元素都进行值初始化。
+C c{a,b,c…}        
 C c={a,b,c…}
 
-//	c初始化为迭代器b和e指定范围中的元素的拷贝。范围中元素的类型必须与C的元素类型相容(array不适用)
+//    c初始化为迭代器b和e指定范围中的元素的拷贝。范围中元素的类型必须与C的元素类型相容(array不适用)
 C c(b,e)
 
-//	只有顺序容器(不包括array)的构造函数才能接受大小参数
-C seq(n)	
-    
-C seq(n,t)	//seq包含n个初始化为值t的元素
-    
+//    只有顺序容器(不包括array)的构造函数才能接受大小参数
+C seq(n)    
+
+C seq(n,t)    //seq包含n个初始化为值t的元素
 ```
 
 ### 容器赋值操作
@@ -846,10 +802,6 @@ c1=c2
 ```
 
 ## 顺序容器操作
-
-
-
-
 
 ------
 
@@ -862,7 +814,7 @@ c1=c2
 大多数算法都定义在头文件`algorithm`中。
 
 ```c++
-int val = 42;	//	我们将查找的值
+int val = 42;    //    我们将查找的值
 auto result = find(vec.cbegin(),vec.cend(),val);
 cout << "The value" << val
     << (result == vec.cend() ? "is not present" : " is present") << endl;
@@ -874,20 +826,17 @@ cout << "The value" << val
 
 ### 写容器元素的算法
 
-
-
 ```c++
-vector<int> vec;//	空vector
+vector<int> vec;//    空vector
 //fill_n()接受一个单迭代器、一个计数值和一个值，将给定值赋予迭代器指向的元素开始的指定个元素
 fill_n(vec.begin(),vec.size(),0);//将所有元素重置为0
-
 ```
 
 非常容易犯的错误
 
 ```c++
-vector<int> vec;//	空vector
-//	灾难：修改vec中的10个(不存在)元素
+vector<int> vec;//    空vector
+//    灾难：修改vec中的10个(不存在)元素
 fill_n(vec.begin(),10,0);
 ```
 
@@ -896,15 +845,15 @@ fill_n(vec.begin(),10,0);
 一种保证算法有足够元素空间来容纳输出数据的方法是使用**插入迭代器**。插入迭代器是一种向容器中添加元素的迭代器。通常情况，当我们通过一个迭代器向容器元素赋值时，值被赋予迭代器指向的元素。而当我们通过一个插入迭代器赋值时，一个与赋值号右侧值相等的元素被添加到容器中。
 
 ```c++
-vector<int> vec;	//	空向量
-auto it = back_inserter(vec);	//	通过它赋值会将元素添加到vec中
-*it = 42;	//	vec中现在有一个元素，值为42
+vector<int> vec;    //    空向量
+auto it = back_inserter(vec);    //    通过它赋值会将元素添加到vec中
+*it = 42;    //    vec中现在有一个元素，值为42
 ```
 
 ```c++
-vector<int> vec;	//	空向量
-//	正确：back_inserter创建一个插入选代器，可用来向vec添加元素
-fill_n(back_inserter(vec),10,0);	//添加10个元素到vec
+vector<int> vec;    //    空向量
+//    正确：back_inserter创建一个插入选代器，可用来向vec添加元素
+fill_n(back_inserter(vec),10,0);    //添加10个元素到vec
 ```
 
 **拷贝算法**
@@ -913,10 +862,9 @@ fill_n(back_inserter(vec),10,0);	//添加10个元素到vec
 
 ```c++
 int a1[] = {0,1,2,3,4,5,6};
-int a2[sizeof(a1)/sizeof(*a1)];	//	a2与a1大小一样	数组元素个数 = 数组大小 / 单个元素的大小
-//	copy返回的是其目的位置迭代器递增后的值	ret指向拷贝到a2的尾元素之后的位置
-auto ret = copy(begin(a1),end(a1),a2);	//	把a1的内容拷贝给a2
-
+int a2[sizeof(a1)/sizeof(*a1)];    //    a2与a1大小一样    数组元素个数 = 数组大小 / 单个元素的大小
+//    copy返回的是其目的位置迭代器递增后的值    ret指向拷贝到a2的尾元素之后的位置
+auto ret = copy(begin(a1),end(a1),a2);    //    把a1的内容拷贝给a2
 ```
 
 ### 重排容器元素的算法
@@ -930,12 +878,12 @@ auto ret = copy(begin(a1),end(a1),a2);	//	把a1的内容拷贝给a2
 谓词是一个可调用表达式，其返回结果是一个能用作条件的值。
 
 ```c++
-//	比较函数，用来按长度排序单词
+//    比较函数，用来按长度排序单词
 bool isShorter(const string &s1, const string &s2)
 {
-	return s1.size() < s2.size();
+    return s1.size() < s2.size();
 }
-//	按长度由短至长排序words
+//    按长度由短至长排序words
 sort(words.begin(),words.end(),isShorter);
 ```
 
@@ -949,8 +897,6 @@ lambda表达式有如下优点：
 - 简洁：不需要额外再写一个函数或者函数对象，避免了代码膨胀和功能分散，让开发者更加集中精力在手边的问题，同时也获取了更高的生产率。
 - 在需要的时间和地点实现功能闭包，使程序更灵活。
 
-
-
 lambda 表达式定义了一个匿名函数，并且可以捕获一定范围内的变量。lambda 表达式的语法形式可简单归纳如下：
 
 ```
@@ -963,7 +909,7 @@ lambda 表达式定义了一个匿名函数，并且可以捕获一定范围内�
 
 ```c++
 auto f = []{ return 42; };
-cout << f() << endl;	//	打印42
+cout << f() << endl;    //    打印42
 ```
 
 #### 使用 lambda 表达式捕获列表
@@ -1011,13 +957,9 @@ lambda 表达式的类型在 C++11 中被称为“闭包类型（Closure Type）
 
 因此，我们可以认为它是一个带有 operator() 的类，即仿函数。因此，我们可以使用 `std::function` 和 `std::bind` 来存储和操作 lambda 表达式：
 
-
-
 ```c++
 std::function<int(int)>  f1 = [](int a){ return a; };
 std::function<int(void)> f2 = std::bind([](int a){ return a; }, 123);
-
-
 ```
 
 另外，对于没有捕获任何变量的 lambda 表达式，还可以被转换成一个普通的函数指针：
@@ -1081,8 +1023,6 @@ std::cout << "The number of even is " << even_count << std::endl;
 
 lambda 表达式的价值在于，就地封装短小的功能闭包，可以极其方便地表达出我们希望执行的具体操作，并让上下文结合得更加紧密。
 
-
-
 ------
 
 # 动态内存
@@ -1104,8 +1044,8 @@ lambda 表达式的价值在于，就地封装短小的功能闭包，可以极�
 类似vector，智能指针也是模板。因此，当我们创建一个智能指针时，必须提供额外的信息——指针可以指向的类型。
 
 ```c++
-shared_ptr<string> p1;		//	shared_ptr, 可以指向string
-shared_ptr<list<int>> p2;	//	shared_ptr,可以指向int的list
+shared_ptr<string> p1;        //    shared_ptr, 可以指向string
+shared_ptr<list<int>> p2;    //    shared_ptr,可以指向int的list
 ```
 
 默认初始化的智能指针中保存着一个空指针。
@@ -1113,44 +1053,44 @@ shared_ptr<list<int>> p2;	//	shared_ptr,可以指向int的list
 智能指针的使用方式与普通指针类似。解引用一个智能指针返回它指向的对象。如果在一个条件判断中使用智能指针，效果就是检测它是否为空：
 
 ```c++
-//	如果p1不为空，检查它是否指向一个空string
+//    如果p1不为空，检查它是否指向一个空string
 if (p1 && p1->empty())
-	*p1 = "hi";	//	如果p1指向一个空string，解引用p1, 将一个新值赋予string
+    *p1 = "hi";    //    如果p1指向一个空string，解引用p1, 将一个新值赋予string
 ```
 
 shared_ptr和unique_ptr都支持的操作
 
-| `shared_ptr<T> sp`  |      |
-| ------------------- | ---- |
-| `unique_ptr<T>  up` |      |
-| `p`                 |      |
-| `*p`                |      |
-| `p->mem`            |      |
-| `p.get`             |      |
-| `swap(p,q)`         |      |
-| `p.swap(q)`         |      |
+| `shared_ptr<T> sp`  |     |
+| ------------------- | --- |
+| `unique_ptr<T>  up` |     |
+| `p`                 |     |
+| `*p`                |     |
+| `p->mem`            |     |
+| `p.get`             |     |
+| `swap(p,q)`         |     |
+| `p.swap(q)`         |     |
 
 shared_ptr独有的操作
 
-| `make_shared<T>(args)` | 返回一个shared_ptr,指向一个动态分配的类型为T的对象。使用args初始化此对象。 |
-| ---------------------- | ------------------------------------------------------------ |
-| `shared_ptr<T>p(q)`    | p是shared_ptr q的拷贝；此操作会递增q中的计数器。             |
+| `make_shared<T>(args)` | 返回一个shared_ptr,指向一个动态分配的类型为T的对象。使用args初始化此对象。                               |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `shared_ptr<T>p(q)`    | p是shared_ptr q的拷贝；此操作会递增q中的计数器。                                             |
 | `p = q`                | p和q都是 shared_ptr,所保存的指针必须能相互转换。此操作会递减p的引用计数，递增q的引用计数：若p的引用计数变为0,则将其管理的原内存释放 |
-| `p.unique()`           | 若`p.use_count()`为1，返回true；否则返回false                |
-| `p.use_count()`        | 返回与p共享对象的智能指针数量：可能很慢，主要用于调试        |
+| `p.unique()`           | 若`p.use_count()`为1，返回true；否则返回false                                         |
+| `p.use_count()`        | 返回与p共享对象的智能指针数量：可能很慢，主要用于调试                                                 |
 
 #### make_shared函数
 
 最安全的分配和使用动态内存的方法是调用一个名为 make shared的标准库函数此函数在动态内存中分配一个对象并初始化它，返回指向此对象的shared_ptr。与智能指针一样，make_ shared也定义在头文件 memory中。
 
 ```c++
-//	指向一个值为42的int的shared_ptr
+//    指向一个值为42的int的shared_ptr
 shared_ptr<int> p3 = make_shared<int>(42);
-//	p4指向一个值为"9999999999"的string
+//    p4指向一个值为"9999999999"的string
 shared_ptr<string> p4 = make_shared<string>(10,'9');
-//	p5指向一个值初始化的int,值为0
+//    p5指向一个值初始化的int,值为0
 shared_ptr<int> p5 = make_shared<int>();
-//	P6指向一个动态分配的空vector<string>
+//    P6指向一个动态分配的空vector<string>
 auto p6 = make_shared<vector<string>>();
 ```
 
@@ -1159,8 +1099,8 @@ auto p6 = make_shared<vector<string>>();
 当进行拷贝或赋值操作时，每个shared_ptr都会记录有多少个其他shared_ptr指向相同的对象：
 
 ```c++
-auto p = make_shared<int>(42);	//	p指向的对象只有p一个引用者
-auto q(p);	//	p和q指向相同对象，此对象有两个引用者
+auto p = make_shared<int>(42);    //    p指向的对象只有p一个引用者
+auto q(p);    //    p和q指向相同对象，此对象有两个引用者
 ```
 
 我们可以认为每个 shared ptr都有一个关联的计数器，通常称其为**引用计数**( referencecount)。无论何时我们拷贝一个 shared_ptr,计数器都会递增。例如，当用一个shared_ptr初始化另一个 shared_ptr,或将它作为参数传递给一个函数以及作为函数的返回值时，它所关联的计数器就会递增。
@@ -1170,39 +1110,33 @@ auto q(p);	//	p和q指向相同对象，此对象有两个引用者
 一旦一个 shared_ptr的计数器变为0,它就会自动释放自己所管理的对象：
 
 ```c++
-auto r =make_shared<int>(42);	//	r指向的int只有一个引用者
-r = q;	//	给r赋值，令它指向另一个地址
-		//	递增q指向的对象的引用计数
-		//	递减r原来指向的对象的引用计数
-		//	r原来指向的对象已没有引用者，会自动释放
+auto r =make_shared<int>(42);    //    r指向的int只有一个引用者
+r = q;    //    给r赋值，令它指向另一个地址
+        //    递增q指向的对象的引用计数
+        //    递减r原来指向的对象的引用计数
+        //    r原来指向的对象已没有引用者，会自动释放
 ```
 
 #### shared_ptr自动销毁所管理的对象……
 
- 
-
 #### ……shared_ptr还会自动释放相关联的内存
 
-
-
 ```c++
-//	factory返回一个shared_ptr，指向一个动态分配的对象
+//    factory返回一个shared_ptr，指向一个动态分配的对象
 shared_ptr<Foo> factory(T arg)
 {
-    //	恰当处理arg
-    //	shared_ptr负责释放内存
+    //    恰当处理arg
+    //    shared_ptr负责释放内存
     return make_shared<Foo>(arg);
 }
 ```
 
-
-
 ```c++
 void use_factory(T arg)
 {
-	shared_ptr<Foo> p = factory(arg);
-	//	使用p
-}	//	p离开了作用域，他指向的内存会被自动释放掉
+    shared_ptr<Foo> p = factory(arg);
+    //    使用p
+}    //    p离开了作用域，他指向的内存会被自动释放掉
 ```
 
 由于p是use_ factory的局部变量，在use_ factory结東时它将被销毁。当p被销毁时，将递减其引用计数并检査它是否为0。在此例中，p是唯一引用 factory返回的内存的对象。由于p将要销毁，p指向的这个对象也会被销毁，所占用的内存会被释放。
@@ -1212,11 +1146,11 @@ void use_factory(T arg)
 ```c++
 void use_factory(T arg)
 {
-	shared_ptr<Foo> p = factory(arg);
-	//	使用p
-    //	向此函数的调用者返回一个p的拷贝
-	return p;
-}	//	p离开了作用域，但它指向的内存不会被释放掉
+    shared_ptr<Foo> p = factory(arg);
+    //    使用p
+    //    向此函数的调用者返回一个p的拷贝
+    return p;
+}    //    p离开了作用域，但它指向的内存不会被释放掉
 ```
 
 ### 直接管理内存
@@ -1224,13 +1158,13 @@ void use_factory(T arg)
 #### 使用new动态分配和初始化对象
 
 ```c++
-int *pi = new int;	//	pi指向一个动态分配的、未初始化的无名对象
+int *pi = new int;    //    pi指向一个动态分配的、未初始化的无名对象
 ```
 
 ```c++
-int *pi = new int(1024);	//	pi指向一个未初始化的int
-string *ps = new string(10,'9');	//	*ps为“9999999999”
-//	vector有10个元素，值依次从0到9
+int *pi = new int(1024);    //    pi指向一个未初始化的int
+string *ps = new string(10,'9');    //    *ps为“9999999999”
+//    vector有10个元素，值依次从0到9
 vector<int> *pv = new vector<int>{0,1,2,3,4,5,6,7,8,9};
 ```
 
@@ -1239,18 +1173,18 @@ vector<int> *pv = new vector<int>{0,1,2,3,4,5,6,7,8,9};
 用new分配const对象是合法的：
 
 ```c++
-//	分配并初始化一个const int
+//    分配并初始化一个const int
 const int *pci = new const int(1024);
-//	分配并默认初始化一个const的空string
+//    分配并默认初始化一个const的空string
 const string *pcs = new const string;
 ```
 
 #### 内存耗尽
 
 ```c++
-//	如果分配失败，new返回一个空指针
-int *p1 = new int;	//	如果分配失败，new抛出std::bad_alloc
-int *p2 = new (nothrow) int;	//如果分配失败，new返回一个空指针
+//    如果分配失败，new返回一个空指针
+int *p1 = new int;    //    如果分配失败，new抛出std::bad_alloc
+int *p2 = new (nothrow) int;    //如果分配失败，new返回一个空指针
 ```
 
 #### 释放动态内存
@@ -1258,36 +1192,34 @@ int *p2 = new (nothrow) int;	//如果分配失败，new返回一个空指针
 少用！
 
 ```c++
-delete p;	//	p必须指向一个动态分配的对象或是一个空指针
+delete p;    //    p必须指向一个动态分配的对象或是一个空指针
 ```
 
 ### shared_ptr和new结合使用
 
 ```c++
-shared_ptr<int> p2(new int(42));	//	p2指向一个值为42的int
+shared_ptr<int> p2(new int(42));    //    p2指向一个值为42的int
 ```
 
 接受指针参数的智能指针构造函数是`explicit`的。因此，我们不能将一个内置指针隐式转换为一个智能指针，必须使用直接初始化形式来初始化一个智能指针:
 
 ```c++
-shared_ptr<int> p1 = new int(1024);	//	错误：必须使用直接初始化形式
-shared_ptr<int> p2(new int(1024));	//	正确：使用了直接初始化形式
+shared_ptr<int> p1 = new int(1024);    //    错误：必须使用直接初始化形式
+shared_ptr<int> p2(new int(1024));    //    正确：使用了直接初始化形式
 ```
 
 p1的初始化隐式地要求编译器用一个new返回的int*来创建一个shared_ptr。由于我们不能进行内置指针到智能指针的隐式转换，因此这条语句是错误的。
 
 ```c++
 shared_ptr<int> clone(int p){
-	return new int(p);	//	错误：隐式转换为shared_ptr<int>
+    return new int(p);    //    错误：隐式转换为shared_ptr<int>
 }
 ```
 
-
-
 ```c++
 shared_ptr<int> clone(int p){
-	//	正确：显示地用int*创建shared_ptr<int。
-	return shared_ptr<int>(new int(p))
+    //    正确：显示地用int*创建shared_ptr<int。
+    return shared_ptr<int>(new int(p))
 }
 ```
 
@@ -1309,14 +1241,12 @@ int *pia =new int[10]{0,1,2,3,4,5,6,7,8,9}
 #### 智能指针和动态数组
 
 ```c++
-//	up指向一个包含10个未初始化int的数组
+//    up指向一个包含10个未初始化int的数组
 unique_ptr<int[]> up (new int[10]);
-up.release();	//	自动用delete[]销毁其指针
+up.release();    //    自动用delete[]销毁其指针
 ```
 
 ### allocator类
-
- 
 
 ------
 
@@ -1331,8 +1261,8 @@ up.release();	//	自动用delete[]销毁其指针
 ```c++
 class Foo {
 public:
-	Foo();			//	默认构造函数
-	Foo(const Foo&);	//	拷贝构造函数
+    Foo();            //    默认构造函数
+    Foo(const Foo&);    //    拷贝构造函数
 };
 ```
 
@@ -1340,16 +1270,21 @@ public:
 
 ```c++
 Sales_data trans, accum;
-trans = accum;	//	使用Sales_data的拷贝赋值运算符
+trans = accum;    //    使用Sales_data的拷贝赋值运算符
 ```
+
+**如果临时变量是第一次出现，那么调用的只能是拷贝构造函数，反之如果变量已经存在，那么调用的就是赋值函数。**
+
+    String a("hello");
+    String b("world");
+    
+    String c = a;//这里c对象被创建调用的是拷贝构造函数
+                 //一般是写成 c(a);这里是与后面比较
+    c = b;//前面c对象已经创建，所以这里是赋值函数`
 
 #### 重载赋值运算符
 
 重载运算符本质上是函数，其名字由`operator`关键字后接表示要定义的运算符的符号组成。重载运算符
-
-
-
-
 
 ### 析构函数
 
@@ -1358,7 +1293,7 @@ trans = accum;	//	使用Sales_data的拷贝赋值运算符
 ```c++
 class Foo {
 public:
-	~Foo();	//	析构函数
+    ~Foo();    //    析构函数
 }
 ```
 
@@ -1372,16 +1307,12 @@ public:
 
 ```
 int i = 42;
-int &r = i;	
+int &r = i;    
 ```
-
-
 
 ------
 
 # 操作重载与类型转换
-
-
 
 ### 显式的类型转换运算符
 
@@ -1391,13 +1322,13 @@ int &r = i;
 #include <iostream>
 using namespace std;
 
-class Test1	{
+class Test1    {
 public:
     Test1(int num):n(num){}
 private:
     int n;
 };
-class Test2	{
+class Test2    {
 public：
     explicit Test2(int num):n(num){}
 private:
@@ -1421,7 +1352,7 @@ C++中预定义的运算符的操作对象只能是基本数据类型。但实�
 
 ```
 <返回类型说明符> operator <运算符符号>(<参数表>) {      
-	<函数体> 
+    <函数体> 
 }
 ```
 
@@ -1432,9 +1363,9 @@ C++中预定义的运算符的操作对象只能是基本数据类型。但实�
 
 ```c++
 struct absInt{
-	int operator() (int val) const {
-		return val < 0 ? -val : val;
-	}
+    int operator() (int val) const {
+        return val < 0 ? -val : val;
+    }
 };
 ```
 
@@ -1442,15 +1373,13 @@ struct absInt{
 
 ```c++
 int i = -42;
-absInt absObj;			//	含有函数调用运算符的对象
-int ui = absObj(i);		//	将i传递给absObj.operator()
+absInt absObj;            //    含有函数调用运算符的对象
+int ui = absObj(i);        //    将i传递给absObj.operator()
 ```
 
 即使`absObj`只是一个对象而非函数，我们也能调用该对象。调用对象实际上是在运行重载的调用运算符。在此例中，该运算符接受一个int值并返回其绝对值。
 
 # OOP
-
-
 
 # 优先队列
 
@@ -1472,15 +1401,11 @@ pop 弹出队头元素
 swap 交换内容
 ```
 
-
-
 ```c++
 //升序队列
 priority_queue<int, vector<int>,greater<int> > q;
 //降序队列
 priority_queue<int, vector<int>,less<int> > q;
-
-
 ```
 
 ```c++
@@ -1521,7 +1446,7 @@ int main(){
         d.pop();
     }
     cout << endl;
-    
+
     priority_queue<tmp1,vector<tmp1>,tmp2> f;
     f.push(b);
     f.push(c);
@@ -1531,7 +1456,6 @@ int main(){
         f.pop;
     }
 }
-
 ```
 
 # 栈
@@ -1539,18 +1463,15 @@ int main(){
 ```c++
 #include<stack>
 
-stack<int> q;	//以int型为例
+stack<int> q;    //以int型为例
 int x;
-q.push(x);		//将x压入栈顶
-q.top();		//返回栈顶的元素
-q.pop();		//删除栈顶的元素
-q.size();		//返回栈中元素的个数
-q.empty();		//检查栈是否为空，若为空返回true，否则返回false
+q.push(x);        //将x压入栈顶
+q.top();        //返回栈顶的元素
+q.pop();        //删除栈顶的元素
+q.size();        //返回栈中元素的个数
+q.empty();        //检查栈是否为空，若为空返回true，否则返回false
 ```
-
-
 
 # 模板和范型编程
 
 ## 定义模板
-
