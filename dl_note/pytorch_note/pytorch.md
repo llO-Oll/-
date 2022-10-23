@@ -18,11 +18,12 @@ example:
                   ('conv2', nn.Conv2d(20,64,5)),
                   ('relu2', nn.ReLU())
                 ]))
+
 在初始化函数`__init__`中，首先是if条件判断，如果传入的参数为1个，并且类型为`OrderedDict`，通过字典索引的方式将子模块添加到`self._modules`中，否则，通过for循环遍历参数，将所有的子模块添加到`self._modules`中。
 
 ```python
 def __init__(self, *args):
-	super(Sequential,self).__init__()
+    super(Sequential,self).__init__()
     if len(args) == 1 and isinstance(args[0], OrderedDict):
         for key,module in args[0].items():
             self.add_module(key,module)
@@ -36,9 +37,9 @@ def __init__(self, *args):
 
 ```python
 def forward(self, input):
-	for module in self._modules.values():
-		input = module(input)
-	return input
+    for module in self._modules.values():
+        input = module(input)
+    return input
 ```
 
 下面是简单的三层网络结构的例子：
@@ -54,7 +55,7 @@ class Net(nn.Module):
     def __init__(self, in_dim, n_hidden_1, n_hidden_2, out_dim):
         super().__init__()
 
-      	self.layer = nn.Sequential(
+          self.layer = nn.Sequential(
             nn.Linear(in_dim, n_hidden_1), 
             nn.ReLU(True)，
             nn.Linear(n_hidden_1, n_hidden_2)，
@@ -63,9 +64,9 @@ class Net(nn.Module):
             nn.Linear(n_hidden_2, out_dim)
              )
 
-  	def forward(self, x):
-      	x = self.layer(x)
-      	return x
+      def forward(self, x):
+          x = self.layer(x)
+          return x
 ```
 
 ### `nn.Flatten()`
@@ -91,6 +92,7 @@ torch.Size([160, 5])
 ### `Tensor.requires_grad`&`Tensor.requires_grad_`
 
 `requires_grad_()`函数会改变`Tensor`的`requires_grad`属性并返回`Tensor`，修改`requires_grad`的操作是原位操作(in place)。
+
 ```
 >>> a = torch.tensor([1.0, 2.0])
 >>> a.data
@@ -115,9 +117,7 @@ tensor([1., 2.])
 tensor([6., 2.])
 >>> a
 tensor([6., 2.], requires_grad=True)
-
 ```
-
 
 ### 矩阵乘法
 
@@ -127,6 +127,10 @@ tensor([6., 2.], requires_grad=True)
 
 `*`等同于`torch.mul()`
 
+## torch.stack()
 
+按一个新的维度拼接两个tensor
 
+# torch.unsqueeze()
 
+对数据维度进行扩充，增加维度
