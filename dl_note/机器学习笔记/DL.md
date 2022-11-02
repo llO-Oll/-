@@ -1,4 +1,4 @@
-# Softmax回归
+## Softmax回归
 
 回归估计一个连续值，分类预测离散类别。**回归**可以预测*多少*的问题，比如预测房价或者患者住院的天数。而对于分类问题，一般求解的是*哪一个*，不是*多少*的问题。
 
@@ -26,7 +26,7 @@ o_3 = x_1w_{31}+x_2w_{32}+x_3w_{33}+x_4w_{34}+b_3$
 
 为了更简洁地表达模型，我们仍然使用线性代数符号。 通过向量形式表达为$o=Wx+b$， 这是一种更适合数学和编写代码的形式。 由此，我们已经将所有权重放到一个3×4矩阵中。 对于给定数据样本的特征$x$， 我们的输出是由权重与输入特征进行矩阵-向量乘法再加上偏置$b$得到的。
 
-## softmax运算
+### softmax运算
 
 现在我们将优化参数以最大化观测数据的概率。 为了得到预测结果，我们将设置一个阈值，如选择**具有最大概率的标签**。
 
@@ -40,7 +40,7 @@ o_3 = x_1w_{31}+x_2w_{32}+x_3w_{33}+x_4w_{34}+b_3$
 $\hat{y}=softmax(o) 其中 \hat{y_i} = \frac{exp(o_j)}{ \sum_k{o_k}}$
 这里，对于所有的j总有$0≤\hat{y_j}≤1$。 因此，$\hat{y_j}$可以视为一个正确的概率分布。 softmax运算不会改变未规范化的预测o之间的顺序，只会确定分配给每个类别的概率。 因此，在预测过程中，我们仍然可以用下式来选择最有可能的类别。
 
-## 交叉熵损失函数
+### 交叉熵损失函数
 
 接下来，我们需要一个损失函数来度量预测的效果。 我们将使用最大似然估计，这与在线性回归中的方法相同。
 
@@ -111,8 +111,7 @@ $$
 $
 L(\theta^*|x) = p(x|\theta^*)\ge p(x|\theta)=L(\theta|x),\theta=\theta_1\dots,\theta_n
 $
-我们将估计的参数\theta看成变量，计算得到生成观测数据x的概率函数p(x|\theta)$，并找到能最大化概率函数的参数即可：
-$
+我们将估计的参数$\theta$看成变量，计算得到生成观测数据x的概率函数$p(x|\theta)$，并找到能最大化概率函数的参数即可：
 
 $$
 \theta^* = arg\max p(x|\theta)
@@ -133,7 +132,7 @@ $$
 
 上式也通常被称作**对数似然方程** 
 
-# 多层感知机(MLP:multilayer perceptron)
+## 多层感知机(MLP:multilayer perceptron)
 
 结构如下
 
@@ -150,7 +149,7 @@ $$
 
 注意在添加隐藏层之后，模型现在需要跟踪和更新额外的参数。 可我们能从中得到什么好处呢？ 你可能会惊讶地发现：在上面定义的模型里，我们没有好处！ 原因很简单：上面的隐藏单元由输入的仿射函数给出， 而输出（softmax操作前）只是隐藏单元的仿射函数。 仿射函数的仿射函数本身就是仿射函数， 但是我们之前的线性模型已经能够表示任何仿射函数。
 
-### 从线性到非线性
+#### 从线性到非线性
 
 为了发挥多层架构的潜力， 我们还需要一个额外的关键要素： 在仿射变换之后对每个隐藏单元应用非线性的*激活函数*（activation function）σ。 激活函数的输出（例如，σ(⋅)）被称为*活性值*（activations）。 一般来说，有了激活函数，就不可能再将我们的多层感知机退化成线性模型：
 
@@ -161,29 +160,29 @@ $$
 \end{aligned}\end{split}
 $$
 
-## 激活函数
+### 激活函数
 
-### ReLU函数
+#### ReLU函数
 
 $$
 \operatorname{ReLU}(x) = \max(x, 0).
 $$
 
-### sigmoid函数
+#### sigmoid函数
 
 $$
 \operatorname{sigmoid}(x) = \frac{1}{1 + \exp(-x)}.
 $$
 
-### tanh函数
+#### tanh函数
 
 $$
 \operatorname{tanh}(x) = \frac{1 - \exp(-2x)}{1 + \exp(-2x)}.
 $$
 
-# Dropout
+### Dropout
 
-# 前向传播
+### 前向传播
 
 ![image-20220414194713208](DL.assets/image-20220414194713208.png)
 
@@ -191,7 +190,7 @@ $$
 
 ![../_images/forward.svg](DL.assets/forward.svg)
 
-# 反向传播
+### 反向传播
 
 ![image-20220414200015444](DL.assets/image-20220414200015444.png)
 
@@ -199,7 +198,7 @@ $$
 
 ![image-20220414200212805](DL.assets/image-20220414200212805.png)
 
-# 卷积
+## 卷积
 
 卷积计算的两个特点：
 
@@ -215,7 +214,7 @@ $$
 (n_h-k_h+1) \times (n_w-k_w+1)
 $$
 
-## 互相关运算(即卷积运算)
+### 互相关运算(即卷积运算)
 
 ```python
 import torch
@@ -232,7 +231,7 @@ def corr2d(X,K):
     return Y
 ```
 
-## 卷积层
+### 卷积层
 
 ```python
 class Conv2D(nn.Module):
@@ -245,11 +244,11 @@ class Conv2D(nn.Module):
         return corr2d(x, self.weight) + self.bias
 ```
 
-## 感受野
+### 感受野
 
 卷积层的输出有时被称为**特征映射(feature map)**，因为他可以被视为一个输入映射到下一层的空间维度的转换器。在卷积神经网络层，对于某一层的任意元素x，其**感受野（receptive field)**是指在前向传播期间可能影响x计算的所有元素（来自所有先前层）。
 
-## 填充
+### 填充
 
 在应用多层卷积时，我们常常丢失边缘像素。 由于我们通常使用小卷积核，因此对于任何单个卷积，我们可能只会丢失几个像素。 但随着我们应用许多连续卷积层，累积丢失的像素数就多了。 解决这个问题的简单方法即为**填充（padding)**<img src="file:///F:/github/DLnotes/dl_note/机器学习笔记/DL.assets/conv-pad.svg" title="" alt="conv-pad.svg" data-align="center">
 
@@ -262,7 +261,7 @@ conv2d = nn.Conv2d(1, 1, kernel_size=3, padding=1, stride=2)
 comp_conv2d(conv2d, X).shape
 ```
 
-## 步幅
+### 步幅
 
 步幅大于1可以迅速降低输出的大小，减少计算量，加快训练。
 
@@ -279,9 +278,11 @@ conv2d = nn.Conv2d(1, 1, kernel_size=(3, 5), padding=(0, 1), stride=(3, 4))
 comp_conv2d(conv2d, X).shape
 ```
 
-# 锚框
+# 目标检测
 
-## NMS（non-maximum suppression）
+## 锚框
+
+### NMS（non-maximum suppression）
 
 对于一个预测边界框$B$，目标检测模型会计算每个类别的预测概率。假设最大概率为$p$，则该概率所对应的类别B即为预测的类别。我们将$p$称为预测边界框B的置信度(confidence)。在同一张图像中，所有预测的非背景边界框都按置信度降序排序，以生成列表$L$，然后我们通过以下步骤操作排序列表$L$:
 
@@ -310,3 +311,59 @@ def nms(boxes, scores, iou_threshold):
         B = B[inds + 1]
     return torch.tensor(keep)
 ```
+
+### L1 Loss
+
+$$
+L1 = \sum_{i=1}^{n}|y_i - f(x_i)|
+$$
+
+当**假设 x 为预测框和真实框之间的数值差异**时，公式变为：
+
+$$
+L_1 = |X|
+$$
+
+导数：
+
+$$
+\frac{dL_1}{dx} =
+\left\{ \begin{matrix}
+
+1 \quad if x \ge 0\\
+-1 \quad otherwise
+
+\end{matrix}\right.
+$$
+
+特点：
+L1 loss在零点处不平滑，学习慢；
+$L_1$损失函数对 x 的导数为常数，训练后期，x很小时，如果学习率不变，损失函数会在稳定值附近波动，很难收敛到更高的精度。
+
+### Smooth L1 Loss
+
+$$
+smooth_{L_1}(x) =
+\left\{ \begin{matrix}
+
+0.5x^2 \quad if |x| < 1\\
+|x|-0.5 \quad otherwise
+
+\end{matrix}\right.
+$$
+
+导数
+
+$$
+\frac{dsmooth_{L_1}}{dx} = 
+\left\{ \begin{matrix}
+
+x \quad if |x| < 1\\
+\pm1 \quad otherwise
+
+\end{matrix}\right.
+$$
+
+- 特点：  
+  Smooth L1 Loss 相比L1 loss 改进了零点不平滑问题。  
+  相比于L2 loss，在 x 较大的时候不像 L2 对异常值敏感，是一个缓慢变化的loss。
