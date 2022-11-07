@@ -131,6 +131,54 @@ tensor([6., 2.], requires_grad=True)
 
 按一个新的维度拼接两个tensor
 
-# torch.unsqueeze()
+## torch.unsqueeze()
 
 对数据维度进行扩充，增加维度
+
+
+
+## torch.matmul
+
+Matrix product of two tensors.
+
+```python
+torch.matmul(input, other, *, out=None) → Tensor
+```
+
+- **input** ([*Tensor*](https://pytorch.org/docs/stable/tensors.html#torch.Tensor "torch.Tensor")) – the first tensor to be multiplied
+
+- **other** ([*Tensor*](https://pytorch.org/docs/stable/tensors.html#torch.Tensor "torch.Tensor")) – the second tensor to be multiplied
+
+- **out** ([*Tensor*](https://pytorch.org/docs/stable/tensors.html#torch.Tensor "torch.Tensor")*,* *optional*) – the output tensor
+
+```python
+# vector x vector
+tensor1 = torch.randn(3)
+tensor2 = torch.randn(3)
+torch.matmul(tensor1, tensor2).size()
+# torch.Size([])
+
+# matrix x vector
+tensor1 = torch.randn(3, 4)
+tensor2 = torch.randn(4)
+torch.matmul(tensor1, tensor2).size()
+# torch.Size([3])
+
+# batched matrix x broadcasted vector
+tensor1 = torch.randn(10, 3, 4)
+tensor2 = torch.randn(4)
+torch.matmul(tensor1, tensor2).size()
+# torch.Size([10, 3])
+
+# batched matrix x batched matrix
+tensor1 = torch.randn(10, 3, 4)
+tensor2 = torch.randn(10, 4, 5)
+torch.matmul(tensor1, tensor2).size()
+# torch.Size([10, 3, 5])
+
+# batched matrix x broadcasted matrix
+tensor1 = torch.randn(10, 3, 4)
+tensor2 = torch.randn(4, 5)
+torch.matmul(tensor1, tensor2).size()
+# torch.Size([10, 3, 5])
+```
