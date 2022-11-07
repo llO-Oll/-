@@ -1,5 +1,9 @@
 # 内存模型
 
+## 代码区
+
+## 全局区
+
 ## 栈区
 
 栈区的数据由编译器自动管理开辟和释放。**存放函数的参数值和局部变量等。**
@@ -23,8 +27,6 @@ int main(){
     cout << *p << endl;
 }
 ```
-
-
 
 # 输入输出
 
@@ -153,6 +155,15 @@ int zero = 0;
 pi = zero;        //    错误：不能把int变量直接赋值给指针
 ```
 
+#### 野指针
+
+非法申请内存的指针。
+
+```cpp
+int *p = (int *)0x1100;    //野指针
+cout<< *p <<endl;   //访问野指针报错
+```
+
 #### 赋值和指针
 
 ```c++
@@ -199,9 +210,21 @@ r = &i;            //    r引用了一个指针，因此给r赋值&i
 
 #### const的引用(常量引用)
 
-用来修饰形参，防止误操作
+用来修饰形参，防止误操作，防止形参改变实参
 
-```c++
+```cpp
+const int & ref = 10;
+ref = 20;    //错误：ref为只读状态，不可修改
+
+void showValue(const int & a){
+    a = 1000; //错误，a不可修改
+    cout<< a << endl;
+}
+```
+
+
+
+```cpp
 const int ci = 1024;
 const int &r1 = ci;        //    正确：引用及其对应的对象都是常量
 r1 = 42;                //    错误：r1是对常量的引用，常量
@@ -210,7 +233,7 @@ int &r2 = ci;            //    错误：试图让一个非常量引用指向一�
 
 **允许一个常量引用绑定非常量的对象、字面值，甚至是个一般表达式：**
 
-```c++
+```cpp
 int i = 42;                
 const int &r1 = i;        //允许将const int&绑定到一个普通int对象上
 const int &r2 = 42;        //正确：r2是一个常量引用
@@ -220,7 +243,7 @@ int &r4 = r1 * 2;        //错误：r4是一个普通的非常量引用
 
 **常量引用如果引用一个并非const的对象，不能通过常量引用改变绑定对象的值。**
 
-```c++
+```cpp
 int i = 42;
 int &r1 = i;        //    引用ri绑定对象i
 const int &r2 = i;    //    r2也绑定对象i,但是不允许通过r2修改i的值
@@ -655,10 +678,6 @@ void func(int a,int){
 
 注意：函数的返回值不可以作为函故重载的条件
 
-
-
-
-
 ```cpp
 void fun(int &a){
     cout<<"func(int(&a)调用"<<endl;
@@ -840,13 +859,85 @@ struct Sales_data{
   ~类名(){}
   ```
 
-
-
 ### 拷贝、赋值和析构
 
 除了定义类的对象如何初始化之外、类还需要控制拷贝、赋值和销毁对象时发生的行为。
 
+### 静态成员
 
+静态成员就是在成员变量和成员函数前加入关键字`static`，称为静态成员。
+
+静态成员分为：
+
+- 静态成员变量
+  
+  - 所有对象共享同一份数据
+  
+  - 在编译阶段分配内存
+  
+  - 类内声明，类外初始化
+
+- 静态成员函数
+  
+  - 所有对象共享一个函数
+  
+  - 静态成员函数只能访问静态成员变量
+    
+    
+
+```cpp
+//静态成员变量示例
+class Person{
+public:  
+    static int mA;    //类内声明
+
+    //静态成员变量也是有访问权限
+private：
+    static int mB;
+};
+int Person::mA = 100;    //类外初始化
+int Person::mB = 200;
+void test01(){
+    Person p;
+    cout << p.mA << endl;
+    Person p2;
+    p2.mA = 200;
+    cout << p.mA << endl;
+}
+void test02(){
+    //静态成员变量 不属于某个对象上，所有对象都共享同一份数据
+    //因此静态成员变量有两种访问方式
+
+    //1、通过对象进行访问
+    Person p;
+    cout << p.mA << endl;
+    
+    //2、通过类名进行访问
+    cout << Person::mA << endl;
+
+    cout << Person::mB << endl;//会报错，因为mB是private
+}
+int main(){
+    test01();    //输出：100，200。
+}
+```
+
+
+
+```cpp
+//静态成员函数示例
+class Person{
+public:  
+    static void func(){
+        mA = 100; //静态成员函数可以访问静态成员变量
+      //mB = 200; 报错，静态成员函数不可以访问 非静态成员变量
+        cout << "static void func" << endl;
+    }
+    static int mA; //静态成员变量
+    int mB;
+};
+int Person::mA = 0;
+```
 
 ## 访问控制与封装
 
@@ -1371,6 +1462,61 @@ up.release();    //    自动用delete[]销毁其指针
 
 如果一个构造函数的第一个参数时自身类型的引用，且任何额外参数都有默认值，则此构造函数是拷贝函数。
 
+使用拷贝构造函数的三种情况：
+
+- 使用一个已经创建完毕的对象来初始化一个新对象
+
+- 值传递的方式给函数参数传值
+
+- 以值方式返回局部对象
+
+```cpp
+class Person{
+public:
+    Person(){
+        cout << "Person默认构造函数" << endl;
+    }
+    Person(int age){
+        cout << "Person有参构造函数" << endl;
+        mAge = age;
+    }
+    Person(const Person &p){
+        cout << "Person拷贝构造函数" << endl;
+        mAge = p.mAge;
+    }
+    ~Person(){
+        cout << "Person析构函数" << endl;
+    }
+}
+
+// 使用一个已经创建完毕的对象来初始化一个新对象
+void test01(){
+    Person p1(20);    //调用Person有参构造函数
+    Person p2(p1);    //调用Person拷贝构造函数
+}
+// 值传递的方式给函数参数传值
+void doWork(Person p){
+    
+}
+void test02(){
+    Person p;    //调用Person默认构造函数
+    doWork(p);    //实参p传递给形参p，调用Person拷贝构造函数
+}
+
+// 以值方式返回局部对象
+Person doWork2(){
+    Person p1;
+    return p1;
+}
+void test03(){
+    Person p = doWork2(); 
+}
+
+
+```
+
+
+
 ```c++
 class Foo {
 public:
@@ -1443,6 +1589,108 @@ int &&rr = i;      // 错误：不能将一个右值引用绑定到左值上，i
 一句话概括std::move ———— std::move是**将对象的状态或者所有权从一个对象转移到另一个对象**，只是转移，没有内存的搬迁或者内存拷贝。
 
 ![](https://img-blog.csdnimg.cn/2021030222151279.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3MxMXNob3dfMTYz,size_16,color_FFFFFF,t_70)
+
+## 深拷贝、浅拷贝
+
+浅拷贝：简单的赋值拷贝操作
+
+深拷贝：在堆区重新申请空间，进行拷贝操作
+
+
+
+浅拷贝的问题：
+
+```cpp
+class Person{
+public:
+    Person(){
+        cout << "Person默认构造函数" << endl;
+    }
+    Person(int age, int height){
+        cout << "Person有参构造函数" << endl;
+        mAge = age;
+        mHeight =  new int(height);
+    }
+/* 默认的拷贝构造函数
+    Person(const Person &p){
+        mAge = p.mAge;
+        mHeight = p.mHeight; //两个类的p指针指向的地址一致          
+    }   
+*/
+    ~Person(){
+        cout << "Person析构函数" << endl;
+        //析构代码，将堆区开辟数据做释放操作
+        if (mHeight!=NULL){
+            delete mHeight;
+            mHeight = NULL;    //   防止野指针出现
+        }
+    }
+    int mAge;
+    int *mHeight;
+}
+
+void test01(){
+    Person p1(18, 160);
+    cout << "p1的年龄为："<<p1.mAge<<"身高为："<<p1.mHeight<<endl;
+    Person p2(p1);
+    cout << "p2的年龄为："<<p2.mAge<<"身高为："<<p2.mHeight<<endl;
+}
+int main(){
+    test01();    
+    /*会崩溃，此时默认的拷贝构造函数为浅拷贝，p2中的身高和p1中的身高共用同一块内存。
+    由于代码块先进后出，先析构p2,把p2的身高内存也会释放，析构p1时就会报错。
+*/                    
+}
+```
+
+
+
+自己实现拷贝构造函数解决浅拷贝问题
+
+```cpp
+class Person{
+public:
+    Person(){
+        cout << "Person默认构造函数" << endl;
+    }
+    Person(int age, int height){
+        cout << "Person有参构造函数" << endl;
+        mAge = age;
+        mHeight =  new int(height);
+    }
+    Person(const Person &p){
+        cout << "Person拷贝构造函数" << endl;
+        mAge = p.mAge;
+        mHeight =  new int(*p.mHeight);           
+    }    
+    ~Person(){
+        cout << "Person析构函数" << endl;
+        //析构代码，将堆区开辟数据做释放操作
+        if (mHeight!=NULL){
+            delete mHeight;
+            mHeight = NULL;    //   防止野指针出现
+        }
+    }
+    int mAge;
+    int *mHeight;
+}
+
+void test01(){
+    Person p1(18, 160);
+    cout << "p1的年龄为："<<p1.mAge<<"身高为："<<p1.mHeight<<endl;
+    Person p2(p1);
+    cout << "p2的年龄为："<<p2.mAge<<"身高为："<<p2.mHeight<<endl;
+}
+int main(){
+    test01();    
+    /*不会报错，利用深拷贝再创建一块身高内存。
+*/                    
+}
+```
+
+浅拷贝是指源对象与拷贝对象共用一份实体，仅仅是引用的变量不同（名称不同）。对其中任何一个对象的改动都会影响另外一个对象。举个例子，一个人一开始叫张三，后来改名叫李四了，可是还是同一个人，不管是张三缺胳膊少腿还是李四缺胳膊少腿，都是这个人倒霉。
+深拷贝是指 源对象与拷贝对象互相独立 ，其中任何一个对象的改动都不会对另外一个对象造成影响。举个例子，一个人名叫张三，后来用他克隆（假设法律允许）了另外一个人，叫李四，不管是张三缺胳膊少腿还是李四缺胳膊少腿都不会影响另外一个人。比较典型的就是Value（值）对象，如预定义类型Int32，Double，以及结构（struct），枚举（Enum）等。
+
 
 ------
 
