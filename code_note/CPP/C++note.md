@@ -222,8 +222,6 @@ void showValue(const int & a){
 }
 ```
 
-
-
 ```cpp
 const int ci = 1024;
 const int &r1 = ci;        //    正确：引用及其对应的对象都是常量
@@ -700,7 +698,7 @@ int main(){
 
 ## 定义类
 
-```c++
+```cpp
 struct Sales_data{
     //    新成员：关于Sales_data对象的操作
     std::string isbn() const { return bookNo; }
@@ -723,7 +721,7 @@ std::istream &read(std::istream&, Sales_data&);
 
 我们首先介绍`isbn`函数，它的参数列表为空，返回值是一个string对象
 
-```c++
+```cpp
 std::string isbn() const { return bookNo; }
 ```
 
@@ -733,13 +731,23 @@ std::string isbn() const { return bookNo; }
 
 让我们再一次观察对`isbn`成员函数的调用：
 
-```
+```cpp
 total.isbn()
 ```
 
-在这里，我们使用了点运算符来访问total对象的`isbn`成员，然后调用它。当我们调用成员函数时，实际上是在替某个对象调用它。当`isbn`使用`bookNo`时，它隐式地使用this指向的成员，就像我们书写了`this->bookNo`一样。`this`形参是隐式定义的。
+在这里，我们使用了`.`运算符来访问total对象的`isbn`成员，然后调用它。当我们调用成员函数时，实际上是在替某个对象调用它。当`isbn`使用`bookNo`时，它隐式地使用this指向的成员，就像我们书写了`this->bookNo`一样。`this`形参是隐式定义的。
 
-### 引入const成员函数
+
+
+`return *this`返回的是当前对象的克隆或者本身（若返回类型为`A`， 则是克隆， 若返回类型为`A &`， 则是本身 ）。
+
+`return this`返回当前对象的地址（指向当前对象的指针）
+
+#### this不能指向空指针
+
+
+
+### const修饰成员函数(常函数)
 
 `isbn`函数的另一个关键之处是紧随参数列表之后的`const`关键字，这里，`const`的作用是修改隐式`this`指针的类型。
 
@@ -751,7 +759,32 @@ total.isbn()
 
 因为this是指向常量的指针，所以**常量成员函数不能改变调用它的对象的内容。在上例中，`isbn`可以读取调用它的对象的数据成员，但是不能写入新值。**
 
-### 类作用域和成员函数
+```cpp
+class Person{
+public:
+    // this指针的本质是 指针常量， 指针的指向是不可以修改的:Person * const this;
+    // 常函数中的this指针:const Person * const this;
+    // 函数成员后加const,修饰的是this指向，让this指针指向的值也不可以修改。
+    void showPerson() const {
+        this->mA = 100;// 错误，在常函数内不能写入新值。
+        this = NULL; // 错误，this指针不可以修改指针的指向。
+        this->mB = 100;//正确，加入mutable可以修改。
+    }
+    int mA;
+    mutable int mB;
+}
+void test01(){
+    Person p;
+    p.showPerson();
+}
+void test02(){
+    const Person p;    //在对象前加const，变为常对象，只能调用常函数。
+    p.mA = 100; //错误
+    p.mB = 100; //正确，mB加入mutable可以修改。 
+}
+```
+
+## 类作用域和成员函数
 
 类本身就是一个作用域。类的成员函数的定义嵌套在类的作用域之内。
 
@@ -882,8 +915,6 @@ struct Sales_data{
   - 所有对象共享一个函数
   
   - 静态成员函数只能访问静态成员变量
-    
-    
 
 ```cpp
 //静态成员变量示例
@@ -911,7 +942,7 @@ void test02(){
     //1、通过对象进行访问
     Person p;
     cout << p.mA << endl;
-    
+
     //2、通过类名进行访问
     cout << Person::mA << endl;
 
@@ -921,8 +952,6 @@ int main(){
     test01();    //输出：100，200。
 }
 ```
-
-
 
 ```cpp
 //静态成员函数示例
@@ -947,7 +976,84 @@ int Person::mA = 0;
 
 `private`说明符后的成员可以被类的成员函数访问。
 
-## 构造函数再探
+
+
+## 友元
+
+生活中你的家有客厅(Public),有你的卧室(Private)
+客厅所有来的客人都可以进去，但是你的卧室是私有的，也就是说只有你能进去但是呢，你也可以允许你的好闺蜜好基友进去。在程序里，有些私有属性也想让类外特殊的一些函数或者类进行访问，就需要用到友元。
+
+友元的目的就是让一个函数或者类访问另一个类中私有成员
+友元的关键字为friend
+友元的三种实现
+
+- 全局函数做友元
+
+- 类做友元
+
+- 成员函数做友元
+
+```cpp
+
+/*全局函数做友元*/
+class Building{
+    //全局函数goodGay是Building的友元，可以访问Building的私有成员
+    friend void goodGay(Building *building);
+
+public:
+    //构造函数
+    Building(){
+        m_SittingRoom="客厅";
+        m_BedRoom="卧室";  
+    }
+
+public:
+    string: m_SittingRoom;    
+private:
+    string: m_BedRoom;        
+};
+
+
+void goodGay(Building *building){
+    cout<<buliding->m_SittingRoom<<endl;
+    cout<<buliding->m_BedRoom<<endl;   
+}
+```
+
+
+
+```cpp
+/*成员函数做友元*/
+class Building{
+    //GoodGay类下的visit是友元
+    friend void GoodGay::visit();
+public:
+    building();
+
+public:
+    string: m_SittingRoom;    
+private:
+    string: m_BedRoom; 
+}
+
+class GoodGay{
+public:
+    void visit();
+    Building * building;
+}
+//类外定义成员函数
+void Building::building(){
+     m_SittingRoom="客厅";
+     m_BedRoom="卧室";   
+}
+void GoodGay::visit(){
+    cout<<building->m_BedRoom;
+}
+void test01(){
+    GoodGay gg;
+    gg.visit();
+}
+```
 
 ------
 
@@ -1496,7 +1602,7 @@ void test01(){
 }
 // 值传递的方式给函数参数传值
 void doWork(Person p){
-    
+
 }
 void test02(){
     Person p;    //调用Person默认构造函数
@@ -1511,11 +1617,7 @@ Person doWork2(){
 void test03(){
     Person p = doWork2(); 
 }
-
-
 ```
-
-
 
 ```c++
 class Foo {
@@ -1596,8 +1698,6 @@ int &&rr = i;      // 错误：不能将一个右值引用绑定到左值上，i
 
 深拷贝：在堆区重新申请空间，进行拷贝操作
 
-
-
 浅拷贝的问题：
 
 ```cpp
@@ -1642,8 +1742,6 @@ int main(){
 */                    
 }
 ```
-
-
 
 自己实现拷贝构造函数解决浅拷贝问题
 
@@ -1691,7 +1789,6 @@ int main(){
 浅拷贝是指源对象与拷贝对象共用一份实体，仅仅是引用的变量不同（名称不同）。对其中任何一个对象的改动都会影响另外一个对象。举个例子，一个人一开始叫张三，后来改名叫李四了，可是还是同一个人，不管是张三缺胳膊少腿还是李四缺胳膊少腿，都是这个人倒霉。
 深拷贝是指 源对象与拷贝对象互相独立 ，其中任何一个对象的改动都不会对另外一个对象造成影响。举个例子，一个人名叫张三，后来用他克隆（假设法律允许）了另外一个人，叫李四，不管是张三缺胳膊少腿还是李四缺胳膊少腿都不会影响另外一个人。比较典型的就是Value（值）对象，如预定义类型Int32，Double，以及结构（struct），枚举（Enum）等。
 
-
 ------
 
 # 操作重载与类型转换
@@ -1735,6 +1832,181 @@ C++中预定义的运算符的操作对象只能是基本数据类型。但实�
 ```
 <返回类型说明符> operator <运算符符号>(<参数表>) {      
     <函数体> 
+}
+```
+
+### 加号运算符重载
+
+```cpp
+class Person{
+public:
+    //成员函数加号运算符重载
+    Person operator+(Person &p){
+        Person temp;
+        temp.mA = this->mA + p.mA;
+        temp.mB = this->mB + p.mB;
+        return temp;
+    }
+    int mA;
+    int mB;
+};
+void test01(){
+    Person p1;
+    p1.mA = 10;
+    p1.mB = 10;
+    Person p2;
+    p2.mA = 10;
+    p2.mB = 10;   
+    Person p3 = p1 + p2;
+    cout<<"p3.mA:"<<p3.mA<<"p3.mB:"<<p3.mB<<endl;
+}
+```
+
+```cpp
+class Person{
+public:
+    int mA;
+    int mB;
+};
+//成员函数加号运算符重载
+Person operator+(Person &p1,Person &p2){
+    Person temp;
+    temp.mA = p1.mA +p2.mA;
+    temp.mB = p1.mB +p2.mB;   
+}
+void test01(){
+    Person p1;
+    p1.mA = 10;
+    p1.mB = 10;
+    Person p2;
+    p2.mA = 10;
+    p2.mB = 10;   
+    Person p3 = p1 + p2;
+    cout<<"p3.mA:"<<p3.mA<<"p3.mB:"<<p3.mB<<endl;
+}
+```
+
+### 左移运算符重载
+
+
+
+```cpp
+class Person{
+    friend ostream & operator<<(ostream &cout,Person p);
+public:
+    Person(int a,int b){
+        mA = 10;
+        mB = 10;
+    }
+    //利用成员函数重载 左移运算符 p.operator<<(cout) 简化版本为 p<<cout
+    //与预期cout<<p不符，因此一般不会利用成员函数重载<<运算符。
+//    ostream & operator<<(ostream & cout){   
+//    }
+private:
+    int mA;
+    int mB;
+};
+//只能利用全局函数重载左移运算符
+ostream & operator<<(ostream &cout,Person p)
+{
+    cout << "mA = "<<p.mA<<"mB = "<<p.mB;
+    return cout;//链式编程思想,输入cout返回cout后，还可以继续调用
+}
+
+void test01(){
+    Person p;
+    cout << p << endl;
+}
+```
+
+### 递增运算符重载
+
+
+
+```cpp
+class MyInteger{
+friend ostream & operator<<(ostream &cout,MyInteger myint)；
+public:
+    MyInteger(){
+        mNum = 0;
+    }
+    //重载前置递增
+    //前置递增返回引用
+    MyInteger & operator++(){
+        mNum++;
+        return *this;
+    }
+    //重载后置递增
+    //MyInteger operator++(int) int代表占位参数，可以用于区分前置和后置递增
+    //后置递增返回值，不用引用
+    MyInteger operator++(int){
+        MyInteger temp = *this;
+        mNum++;
+        return temp;
+    }
+
+private:
+    int mNum;
+}
+
+//只能利用全局函数重载左移运算符
+ostream & operator<<(ostream &cout,MyInteger myint)
+{
+    cout << myint.mNum;
+    return cout;//链式编程思想,输入cout返回cout后，还可以继续调用
+}
+void test01(){
+    MyInteger myint;
+    cout << ++myint <<endl;
+}
+```
+
+### 赋值运算符
+
+
+
+```cpp
+ class Person{
+public:
+    Person(int age){
+        cout << "Person有参构造函数" << endl;
+        mAge =  new int(height);
+    }
+    Person(const Person &p){
+        cout << "Person拷贝构造函数" << endl;
+        mAge =  new int(*p.mAge);           
+    }
+    ~Person(){
+        cout << "Person析构函数" << endl;
+        //析构代码，将堆区开辟数据做释放操作
+        if (mAge!=NULL){
+            delete mAge;
+            mAge= NULL;    //   防止野指针出现
+        }
+    }
+    Person & operator=(Person &p){
+       // 编译器提供浅拷贝
+       // mAge = p.mAge;
+ 
+       //应该先判断是否有属性在堆区，如果有先释放干净，然后再深拷贝 
+         if(mAge != NULL){
+             delete mAge;
+             mAge = NULL;
+         }
+        //深拷贝
+         mAge = new int(*p.mAge);
+         return *this;
+    }
+    int *mAge;
+}
+
+void test01(){
+    Person p1(18);
+    Person p2(20);
+    p2 = p1;    //赋值操作
+}
+int main(){
+    test01();                     
 }
 ```
 
