@@ -737,15 +737,11 @@ total.isbn()
 
 在这里，我们使用了`.`运算符来访问total对象的`isbn`成员，然后调用它。当我们调用成员函数时，实际上是在替某个对象调用它。当`isbn`使用`bookNo`时，它隐式地使用this指向的成员，就像我们书写了`this->bookNo`一样。`this`形参是隐式定义的。
 
-
-
 `return *this`返回的是当前对象的克隆或者本身（若返回类型为`A`， 则是克隆， 若返回类型为`A &`， 则是本身 ）。
 
 `return this`返回当前对象的地址（指向当前对象的指针）
 
 #### this不能指向空指针
-
-
 
 ### const修饰成员函数(常函数)
 
@@ -976,8 +972,6 @@ int Person::mA = 0;
 
 `private`说明符后的成员可以被类的成员函数访问。
 
-
-
 ## 友元
 
 生活中你的家有客厅(Public),有你的卧室(Private)
@@ -994,7 +988,6 @@ int Person::mA = 0;
 - 成员函数做友元
 
 ```cpp
-
 /*全局函数做友元*/
 class Building{
     //全局函数goodGay是Building的友元，可以访问Building的私有成员
@@ -1019,8 +1012,6 @@ void goodGay(Building *building){
     cout<<buliding->m_BedRoom<<endl;   
 }
 ```
-
-
 
 ```cpp
 /*成员函数做友元*/
@@ -1888,8 +1879,6 @@ void test01(){
 
 ### 左移运算符重载
 
-
-
 ```cpp
 class Person{
     friend ostream & operator<<(ostream &cout,Person p);
@@ -1920,8 +1909,6 @@ void test01(){
 ```
 
 ### 递增运算符重载
-
-
 
 ```cpp
 class MyInteger{
@@ -1963,8 +1950,6 @@ void test01(){
 
 ### 赋值运算符
 
-
-
 ```cpp
  class Person{
 public:
@@ -1987,7 +1972,7 @@ public:
     Person & operator=(Person &p){
        // 编译器提供浅拷贝
        // mAge = p.mAge;
- 
+
        //应该先判断是否有属性在堆区，如果有先释放干净，然后再深拷贝 
          if(mAge != NULL){
              delete mAge;
@@ -2034,6 +2019,178 @@ int ui = absObj(i);        //    将i传递给absObj.operator()
 即使`absObj`只是一个对象而非函数，我们也能调用该对象。调用对象实际上是在运行重载的调用运算符。在此例中，该运算符接受一个int值并返回其绝对值。
 
 # OOP
+
+## 继承
+
+### 继承语法`class 子类 ：继承方式 父类`
+
+```cpp
+class BasePage{
+public:
+    
+}
+class Java : public BasePage{
+public:
+    void content(){
+        
+    }
+}
+```
+
+### 继承方式：三种
+
+![](assets/2022-11-10-14-28-00-image.png) 
+
+### 继承中的对象模型
+
+
+
+```cpp
+class Base{
+public:
+    int mA;
+protected:
+    int mB;
+private:
+    int mC;
+}
+class Son : public Base{
+public:
+    int mD;
+}
+
+void test01(){
+    cout << "size of Son = "<<sizeof(Son)<<endl;
+}
+int main(){
+    test01();
+    //输出16，因为父类的所有非静态成员属性都会被子类继承，
+    //父类中私有属性 被编译器隐藏了，所以访问不到。
+}
+```
+
+### 继承中构造和析构顺序
+
+先构造父类，在构造子类
+
+先析构子类，再析构父类
+
+```cpp
+class Base{
+public:
+    Base(){
+        
+    }
+    ~Base(){
+    
+    }
+}
+
+class Son : public Base{
+public:
+    Son(){
+        
+    }
+    ~Son(){
+    
+    }  
+}
+
+void test01(){
+    Son s;
+}
+```
+
+### 继承同名成员处理方式
+
+- 访问同类同名成员 直接访问
+
+- 访问父类同名成员 需要加作用域
+
+```cpp
+class Base{
+public:
+    void func(){
+        std::cout<<"父类"<<std::endl;
+    }
+}
+
+class Son : public Base{
+public:
+    void func(){
+        std::cout<<"子类"<<std::endl;
+    } 
+}
+
+void test01(){
+    Son s;
+    std::cout<<s.func()<<std::endl;
+    std::cout<<s.Base::func()<<std::endl;
+}
+```
+
+### 多继承语法
+
+语法：`class 子类 : 继承方式 父类1, 继承方式 父类2,...`
+
+
+
+### 菱形继承问题
+
+![](assets/2022-11-10-15-23-36-image.png)
+
+
+
+```cpp
+class Animal{
+public:
+    int mAge;
+}
+class Sheep : public Animal{}
+class Tuo : public Animal{}
+class SheepTuo : public Sheep,public Tuo{}
+void test01(){
+    SheepTuo st;
+    st.Sheep::mAge = 18;
+    st.Tuo::mAge = 28;
+    // 当菱形继承，两个父类拥有相同的数据，需要加作用域区分
+    cout<<st.Sheep::mAge<<endl;
+    cout<<st.Tuo::mAge<<endl;
+    /*输出：
+    18
+    28
+    */
+    //有两份mAge,其实只需要一份数据，自愿浪费
+}
+```
+
+利用虚继承解决菱形问题
+
+```cpp
+class Animal{
+public:
+    int mAge;
+}
+ // 利用虚继承解决菱形问题
+ // 关键字virtual 虚继承
+ // Animal类为虚基类
+class Sheep : virtual public Animal{}
+class Tuo : virtual public Animal{}
+class SheepTuo : public Sheep,public Tuo{}
+void test01(){
+    SheepTuo st;
+    st.Sheep::mAge = 18;
+    st.Tuo::mAge = 28;
+
+    cout<<st.Sheep::mAge<<endl;
+    cout<<st.Tuo::mAge<<endl;
+    /*输出：
+    28
+    28
+    */
+    //只有有一份mAge
+}
+```
 
 # 优先队列
 
