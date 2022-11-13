@@ -100,6 +100,10 @@ double *pd2 =pd;    //    正确：初始值是指向double对象的指针
 int *pi = pd;        //    错误：指针pi的类型和pd的类型不匹配
 ```
 
+#### 指针占用内存
+
+4个字节
+
 #### 指针值
 
 指针的值(地址)应属于下列4种状态：
@@ -2027,12 +2031,12 @@ int ui = absObj(i);        //    将i传递给absObj.operator()
 ```cpp
 class BasePage{
 public:
-    
+
 }
 class Java : public BasePage{
 public:
     void content(){
-        
+
     }
 }
 ```
@@ -2042,8 +2046,6 @@ public:
 ![](assets/2022-11-10-14-28-00-image.png) 
 
 ### 继承中的对象模型
-
-
 
 ```cpp
 class Base{
@@ -2079,20 +2081,20 @@ int main(){
 class Base{
 public:
     Base(){
-        
+
     }
     ~Base(){
-    
+
     }
 }
 
 class Son : public Base{
 public:
     Son(){
-        
+
     }
     ~Son(){
-    
+
     }  
 }
 
@@ -2133,13 +2135,9 @@ void test01(){
 
 语法：`class 子类 : 继承方式 父类1, 继承方式 父类2,...`
 
-
-
 ### 菱形继承问题
 
 ![](assets/2022-11-10-15-23-36-image.png)
-
-
 
 ```cpp
 class Animal{
@@ -2191,6 +2189,128 @@ void test01(){
     //只有有一份mAge
 }
 ```
+
+## 多态
+
+多态分为两类
+
+- 静态多态：**函数重载** 和 **函数运算符重载** 属于静态多态，复用函数名。
+
+- 动态多态：派生类和虚函数实现运行时多态
+
+### 静态多态和动态多态的区别
+
+- 静态多态的函数地址早绑定 - 编译阶段确定函数地址
+
+- 动态多态的函数地址完绑定 - 运行阶段确定函数地址
+
+```cpp
+class Animal{
+public:
+    void speak(){
+        std::cout<<"动物在说话"<<std::endl;
+    }
+}
+
+class Cat : public:Animal{
+public:
+    void speak(){
+        std::cout<<"小猫在说话"<<std::endl;
+    }
+}
+//执行说话的函数
+//地址早绑定 在编译阶段确定函数地址
+//如果想执行让猫说话，那么这个函数地址就不能提前绑定，加入virtual关键字
+void doSpeak(Animal &animal){
+    animal.speak();
+}
+
+void test01(){
+    Cat cat;
+    doSpeak(cat);    //Animal & animal = cat;父类的引用和指针可以直接指向子类
+    /*输出
+    "动物在说话"
+    */
+}
+```
+
+动态多态的满足条件：
+
+1. 有继承关系
+
+2. 子类重写父类的虚函数             *重写：函数返回值类型、参数列表、完全相同*
+
+动态多态的使用
+
+- 父类的指针或者引用，执行子类对象
+
+```cpp
+class Animal{
+public:
+    //加入virtual关键字，动态多态，地址晚绑定 在运行阶段确定函数地址
+    virtual void speak(){
+        std::cout<<"动物在说话"<<std::endl;
+    }
+}
+
+class Cat : public:Animal{
+public:
+    void speak(){
+        std::cout<<"小猫在说话"<<std::endl;
+    }
+}
+void doSpeak(Animal &animal){
+    animal.speak();
+}
+
+void test01(){
+    Cat cat;
+    doSpeak(cat);    //Animal & animal = cat;父类的引用和指针可以直接指向子类
+    /*输出
+    "小猫在说话"
+    */
+} 
+```
+
+在函数前加入 `virtual` 关键字，会创建一个`vfptr`(virtual function pointer,虚函数指针),指向`vftable`（虚函数表），表内记录虚函数地址。
+
+Animal类中的虚函数表
+
+| `&Animal::speak` |     |     |
+|:----------------:| --- | --- |
+|                  |     |     |
+|                  |     |     |
+|                  |     |     |
+
+当子类重写父类的虚函数，子类中的虚函数表内部会替换成子类的虚函数地址。
+
+当父类的指针或者引用指向子类对象时候，发生多态。
+
+Cat类中的虚函数表
+
+| `&Cat::speak` |     |     |
+| ------------- | --- | --- |
+|               |     |     |
+|               |     |     |
+|               |     |     |
+
+### 纯虚函数和抽象类
+
+在多态中，通常父类中虚函数的实现是毫无意义的，主要是调用子类重写的内容
+
+因此可以将虚函数改为纯虚函数。
+
+纯虚函数语法：`virtual 返回值类型 函数名 (参数列表) = 0;`
+
+当类中有了纯虚函数，这个类也成为抽象类。
+
+
+
+抽象类的特点
+
+- 无法实例化对象
+
+- 子类必须重写抽象类中的纯虚函数，否则也属于抽象类
 
 # 优先队列
 
