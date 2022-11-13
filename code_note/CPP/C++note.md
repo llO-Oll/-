@@ -264,26 +264,30 @@ const double *cptr = π    //    正确：cptr可以指向一个双精度常量
 *cptr = 42;                    //    错误：不能给*cptr赋值
 ```
 
-#### const指针
+#### 常量指针
 
-**常量指针**必须初始化，而且一旦初始化完成，则它的值（也就是存放指针中的那个地址）就不能再改变。把`*`放在`const`关键字之前用以说明指针是一个常量，不变的是指针本身的值而非指向的那个值：
+**常量指针**必须初始化，而且一旦初始化完成，则它的值（也就是存放指针中的那个地址）就不能再改变。
 
-```c++
-int errNumb = 0;
-int *const curErr = &errNumb;    //    curErr将一直指向errNumb
-const double pi = 3.14159;
-const double *const pip = π    //    pip是一个指向常量对象的常量指针
+- 指针指向的值不能改
+
+- 指针的指向可以改量指针
+
+```cpp
+int a = 10;
+int b = 10;
+const int * p1 = &a;
+p1 = &b;
 ```
 
-要想弄清楚这些声明的含义最行之有效的办法是从右向左阅读。此例中，离`curErr`最近的符号是`const`,意味着`curErr`本身是一个常量对象，对象的类型由声明符的其余部分确定。**声明符中的下一个符号是`*`,意思是`curErr`是一个常量指针。**
+#### 指针常量
 
-`pip`是一个指向常量的常量指针，不论是pip所指的对象值还是pip自己存储的那个地址都不能改变。相反的，`curErr`指向的是一个一般非常量整数，可以用`curErr`去修改`errNumb`的值：
+- 指针指向的值能改
 
-```c++
-*pip = 2.72;                //    错误：pip是一个指向常量的指针
-if (*curErr){
-    *curErr = 0;            //    正确：把curErr所指的对象的值重置
-}
+- 指针的指向不可以改
+
+```cpp
+int * const p2 = &a;
+*p2 = 100;
 ```
 
 #### 顶层const
@@ -2326,8 +2330,6 @@ Cat类中的虚函数表
 
 - 如果是纯虚函数，该类属于抽象类，无法实例化对象
 
-
-
 以下例子，没有调用Cat析构函数，堆区内存没有释放干净，导致**内存泄漏**
 
 ```cpp
@@ -2350,7 +2352,7 @@ public:
         std::cout<<"Cat构造函数"<<std::endl;
         mName = new string(name);
     }
-    
+
     virtual void speak(){
         std::cout << *mName << "小猫在说话" << std::endl;
     }
@@ -2405,7 +2407,7 @@ public:
         std::cout<<"Cat构造函数"<<std::endl;
         mName = new string(name);
     }
-    
+
     virtual void speak(){
         std::cout << *mName << "小猫在说话" << std::endl;
     }
