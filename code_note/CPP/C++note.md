@@ -2304,13 +2304,133 @@ Cat类中的虚函数表
 
 当类中有了纯虚函数，这个类也成为抽象类。
 
-
-
 抽象类的特点
 
 - 无法实例化对象
 
 - 子类必须重写抽象类中的纯虚函数，否则也属于抽象类
+
+### 虚析构和纯虚析构
+
+多态使用时，如果子类中有属性开辟到堆区，那么父类指针在释放时无法调用到子类的析构代码。
+
+解决方式：将父类的析构函数改为**虚析构**或者**纯虚析构**
+
+虚析构和春虚析构的共性：
+
+- 可以解决父类指针释放子类对象
+
+- 都需要有具体的函数实现
+
+虚析构和春虚析构的区别：
+
+- 如果是纯虚函数，该类属于抽象类，无法实例化对象
+
+
+
+以下例子，没有调用Cat析构函数，堆区内存没有释放干净，导致**内存泄漏**
+
+```cpp
+class Animal{
+public:
+    // 纯虚函数
+    virtual void speak()=0;
+    Animal(string name{
+        std::cout<<"Animal构造函数"<<std::endl;
+        mName = new string(name);
+    } 
+    ~Animal(){
+        std::cout<<"Animal析构函数"<<std::endl;
+    }
+}
+
+class Cat : public Animal{
+public:
+    Cat(string name{
+        std::cout<<"Cat构造函数"<<std::endl;
+        mName = new string(name);
+    }
+    
+    virtual void speak(){
+        std::cout << *mName << "小猫在说话" << std::endl;
+    }
+    ~Cat(){
+        if(mName != NULL){
+            std::cout<<"Cat析构函数"<<std::endl;
+            delete mName;
+            mName = NULL;
+        }
+    }
+    string *mName;
+}
+void test01()
+{
+    Animal * animal = new Cat("Tom");
+    animal->speak();
+    delete animal;    //没有调用Cat析构函数，堆区内存没有释放干净，导致内存泄漏
+    /*输出
+    "Animal构造函数"
+    "Cat构造函数"
+    "Tom小猫在说话"
+    "Animal析构函数"
+}
+```
+
+改为虚析构解决
+
+```cpp
+class Animal{
+public:
+    // 纯虚函数
+    virtual void speak()=0;
+    Animal(string name{
+        std::cout<<"Animal构造函数"<<std::endl;
+        mName = new string(name);
+    } 
+     // 虚析构
+    virtual ~Animal(){
+        std::cout<<"Animal析构函数"<<std::endl;
+
+    //纯虚析构，需要定义函数体
+    //virtual ~Animal() = 0;
+    }
+}
+// 纯虚析构 定义
+// animal::~Animal(){
+//        std::cout<<"Animal析构函数"<<std::endl;
+
+class Cat : public Animal{
+public:
+    Cat(string name{
+        std::cout<<"Cat构造函数"<<std::endl;
+        mName = new string(name);
+    }
+    
+    virtual void speak(){
+        std::cout << *mName << "小猫在说话" << std::endl;
+    }
+    ~Cat(){
+        if(mName != NULL){
+            std::cout<<"Cat析构函数"<<std::endl;
+            delete mName;
+            mName = NULL;
+        }
+    }
+    string *mName;
+}
+void test01()
+{
+    Animal * animal = new Cat("Tom");
+    animal->speak();
+    delete animal;   
+    /*输出
+    "Animal构造函数"
+    "Cat构造函数"
+    "Tom小猫在说话"
+    "Animal析构函数"
+    "Animal析构函数"
+}
+```
 
 # 优先队列
 
