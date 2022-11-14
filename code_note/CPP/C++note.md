@@ -2527,4 +2527,92 @@ q.empty();        //检查栈是否为空，若为空返回true，否则返回fa
 
 # 模板和范型编程
 
-## 定义模板
+## 函数模板
+
+```cpp
+tempalte<typename T>
+函数声明和定义
+```
+
+
+
+```cpp
+template<typename T>
+void mySwap(T &a, T &b){
+    T temp = a;
+    a = b;
+    b = temp;
+}
+
+void test01(){
+    int a = 10;
+    int b = 10;
+    //1、自动推导参数类型
+    mySwap(a,b);  
+    //2、显示类型
+    mySwap<int>(a,b);
+}
+```
+
+### 普通函数和函数模板的调用规则
+
+1. 如果函数模板和普通函数都可以调用，优先调用普通函数模板
+
+2. 可以通过空模板参数列表 强制调用 模板函数
+
+3. 函数模板可以发生函数重载
+
+4. 如果函数模板可以产生更好的匹配，优先调用函数模板
+
+
+
+
+
+### 模板的局限性
+
+模板不是万能的，有些自定义类型无法直接使用模板
+
+可以利用具体化的模板解决自定义类型。
+
+```cpp
+template<class T>
+bool myCompare(T &a,T &b){
+    if(a==b)
+        return true;
+    else
+        return false;
+}
+// 利用具体化Person的函数模板，优先调用
+template<>bool myCompare(Person &p1, Person &p2){
+    if(p1.mName==p2.mName &&p1.mAge == p2.mAge)
+        return true;
+    else
+        return false;
+}
+
+Class Person{
+public:
+    Person(string name, int age){
+    this->mName = name;
+    this->mAge = age;
+}
+    string mName;
+    int mAge;
+}
+
+void test01(){
+    Person p1("Tom",10);
+    Person p2("Tom",10);    
+    myCompare(p1,p2);    
+    //myCompare显然不知道如何对比p1和p2
+}
+```
+
+## 类模板
+
+```cpp
+template<typename T>
+类
+```
+
+ 
