@@ -2534,8 +2534,6 @@ tempalte<typename T>
 函数声明和定义
 ```
 
-
-
 ```cpp
 template<typename T>
 void mySwap(T &a, T &b){
@@ -2563,10 +2561,6 @@ void test01(){
 3. 函数模板可以发生函数重载
 
 4. 如果函数模板可以产生更好的匹配，优先调用函数模板
-
-
-
-
 
 ### 模板的局限性
 
@@ -2614,5 +2608,3 @@ void test01(){
 template<typename T>
 类
 ```
-
- 
