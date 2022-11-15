@@ -104,16 +104,20 @@ void test01(){
     MyArray<int>arr2(arr1);
     MyArray<int> arr3(100);
     arr3 = arr1;
+    cout<<arr3[0]<<endl;
 }
 
 void test02(){
     MyArray<int> arr1(5);
     for(int i = 0;i<5;i++){
         arr1.Push_Back(i);
+        cout<<arr1[i]<<endl;
     }
 }
 
+
 int main(){
     test02();
+    system("pause");
     return 0;
 }
