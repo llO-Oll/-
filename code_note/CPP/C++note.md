@@ -266,17 +266,18 @@ const double *cptr = π    //    正确：cptr可以指向一个双精度常量
 
 #### 常量指针
 
-**常量指针**必须初始化，而且一旦初始化完成，则它的值（也就是存放指针中的那个地址）就不能再改变。
+**常量指针**必须初始化，而且一旦初始化完成，则它的值（也就是存放指针地址的内容）就不能再改变。
 
 - 指针指向的值不能改
 
-- 指针的指向可以改量指针
+- 指针的指向可以改
 
 ```cpp
 int a = 10;
 int b = 10;
 const int * p1 = &a;
 p1 = &b;
+*p1 = 20;  //操作错误，指针所指的值不能改变
 ```
 
 #### 指针常量
@@ -288,6 +289,7 @@ p1 = &b;
 ```cpp
 int * const p2 = &a;
 *p2 = 100;
+p2 = &b;    //错误
 ```
 
 #### 顶层const
@@ -384,13 +386,9 @@ int main()
 
 `vector`表示对象的集合，其中所有对象的类型都相同。也被称作容器。
 
-
-
 功能：
 
 - vector数据结构和数组非常相似，也称为单端数组
-  
-  
 
 vector与普通数组区别：
 
@@ -398,7 +396,7 @@ vector与普通数组区别：
 
 动态扩展：
 
-- 并不是在原空间之后续接新空间，而是找更大的内存空间，然后将原数据拷贝新空间，释放原空间
+- **并不是在原空间之后续接新空间，而是找更大的内存空间，然后将原数据拷贝新空间，释放原空间**
 
 ### 定义和初始化`vetor`对象
 
@@ -409,13 +407,74 @@ vector<T> V2 = V1;    //等价于v2(v1),v2中包含有v1所有元素的副本
 vector<T> v3(n,val);//v3包含了n个重复的元素val
 ```
 
-### vector的操作
+### vector容量和大小
 
-```c++
-v.push_back(t)        //向v的尾端添加一个值为t的元素
-v.empty()            //如果v不含有任何元素，返回真；否则返回假
-v.size()            //返回v中元素的个数
+```cpp
+empty()    //判断容器是否为空
+capacity()    //容器的容量
+size()    //返回容器中的个数    capacity()大于等于size()
 ```
+
+### vector的插入和删除
+
+```cpp
+v.push_back(t);                       //向v的尾端添加一个值为t的元素
+v.pop_back();                          //删除最后一个元素
+v.insert(const_iterator pos, ele);    //迭代器指向位置pos插入元素ele
+v.insert(const_iterator pos, int count, ele); //位置pos插入count个元素ele
+v.erase(const_iterator pos, int count, ele);  //删除迭代器指向位置pos
+v.erase(const_iterator start, const_iterator end);  //删除迭代器从start到end之间的元素
+v.clear();                            //删除容器中所有元素
+```
+
+```cpp
+void printVector(vector<int>&v){
+    for(vector<int>::iterator it = v.begin(); it != v.end(); it++){
+        cout<< *it <<"";
+    }
+    cout << endl;
+}
+void test01{
+    vector<int> v1;
+    //尾插
+    v1.push_back(10);
+    v1.push_back(20);
+    v1.push_back(30); 
+   //遍历
+    printVector(v1);
+
+    //尾删
+    v1.pop_bak();
+    printVector(v1);
+
+    //插入    第一个参数是迭代器
+    v1.insert(v1.begin(),100);
+    printVector(v1);
+}
+```
+
+### vector的元素访问
+
+```cpp
+at(int idx);    // 返回索引idx所指的数据
+operator[];     // 返回索引idx所指的数据
+front();        // 返回容器第一个数据元素
+back();         // 返回容器中最后一个数据元素
+```
+
+### vector互换容器
+
+```cpp
+v.swap(vec);    //将vec元素与v互换
+```
+
+### vector预留空间
+
+- 减少vector在动态扩展容量时的扩展次数
+
+函数原型
+
+- `reserve(int len);`  //容器预留len个元素长度，预留位置不初始化，元素不可访问。 
 
 ## 迭代器
 
@@ -2660,3 +2719,106 @@ template<typename T>
 ![](assets/2022-11-17-16-32-13-image.png)
 
 ![](assets/2022-11-17-16-34-51-image.png)
+
+## 常用容器
+
+### deque
+
+双端数组，可以对头端进行插入删除
+
+![](assets/2022-11-18-16-56-43-image.png)
+
+**deque的底层则是 若干个 数组的集合**
+
+![](assets/2022-11-18-17-06-12-image.png)
+
+
+
+### stack容器
+
+![](assets/2022-11-19-16-04-43-image.png)
+
+```cpp
+push(elem);
+pop();
+empty();
+size();
+```
+
+### queue容器
+
+![](assets/2022-11-19-16-09-40-image.png)
+
+只有队头队尾可以被外界访问，队列不允许遍历。
+
+```cpp
+queue<T> que;
+queue(const queue &que);
+
+
+push(elem);
+pop();
+back();
+front();
+
+empty();
+size();
+```
+
+### list容器
+
+双向链表
+
+只支持前移和后移，属于双向迭代器。
+
+![](assets/2022-11-19-16-13-09-image.png)
+
+![](assets/2022-11-19-16-15-19-image.png)
+
+优点：
+
+- 可以对任意位置进行快速插入或删除元素。
+
+- 采用动态存储分配，（相对于vector）不需要余量，不会造成内存浪费和溢出。
+
+缺点：
+
+- 容器遍历速度没有速度快，占用空间比数组大。
+
+**list插入和删除操作不会造成原有list迭代器失效，这在vector中不成立**
+
+```cpp
+list<T> lst;        // list采用模板类实现，对象的默认构造函数
+list(beg, end);     // 构造函数将[beg,end]区间元素拷贝给本身
+list(n, elem);      // 构造函数将n个elem拷贝给本身
+list(const list &lst);    // 拷贝构造函数
+
+//赋值
+assign(begin, end); // 将[beg, end]区间中的数据拷贝赋值给本身
+assign(n, elem);    // 将n个elem拷贝赋值给本身
+list& operator=(const list &lst);
+swap(lst);
+
+//大小操作
+size();    
+empty();
+
+// 重新指定容器的长度为num，若容器变长，则以默认值填充新位置
+// 若容器变短，则末尾超出容器长度的元素被删除。
+resize(num); 
+resize(num, elem);
+
+
+
+
+// list数据存取
+// list属于双向迭代器，不能用at和[]访问元素
+front();    // 返回第一个元素
+back();    //  返回最后一个元素
+
+
+
+// list反转和排序
+reverse();
+sort();
+```
