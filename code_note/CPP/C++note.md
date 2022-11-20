@@ -2860,11 +2860,46 @@ s.find(key) //返回迭代器，没找到返回s.end();
 
 ```
 
-### pair对组
+#### pair对组
 
 不需要头文件
 
 ```
 pair<T,T> p(elem1, elem2);
 pair<T,T> p = make_pair(elem1, elem2);
+```
+
+#### set容器排序
+
+set容器默认排序规则为从小到大
+
+- 利用仿函数改变排序规则
+
+```cpp
+class Mycompare{
+public:
+    bool operator()(int v1 ,int v2){
+        return v1 > v2;
+    }
+}
+void test01(){
+    set<int> s1;
+}
+
+
+int main(){
+    // 按照指定规则排序
+    set<int, Mycompare> s1;
+    
+    s1.insert(10);
+    s1.insert(20);
+    s1.insert(30);
+    s1.insert(40);
+
+    for(set<int, Mycompare>::iterator it s1.begin(); it !=s1.end();it++){
+        cout<<*it<< " ";
+    }
+    cout<<endl;
+
+}
 ```
