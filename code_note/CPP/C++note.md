@@ -2732,8 +2732,6 @@ template<typename T>
 
 ![](assets/2022-11-18-17-06-12-image.png)
 
-
-
 ### stack容器
 
 ![](assets/2022-11-19-16-04-43-image.png)
@@ -2821,4 +2819,52 @@ back();    //  返回最后一个元素
 // list反转和排序
 reverse();
 sort();
+```
+
+
+
+### set/multiset容器
+
+简介
+
+- 所有元素都会在插入时自动被排序
+
+- set不允许重复数据存在
+
+- multiset允许重复数据存在
+
+属于关联式容器，底层是二叉树
+
+
+
+```cpp
+
+set<T> s;
+
+
+s.insert(elem);
+
+
+//删除
+s.clear();
+s.erase(pos);    //删除pos迭代器所指的元素
+s.erase(begin,end);
+s.erase(elem);   //删除值为elem的元素
+
+//查找
+//end迭代器指向末尾元素的下一个位置。
+s.find(key) //返回迭代器，没找到返回s.end();
+
+//统计
+
+
+```
+
+### pair对组
+
+不需要头文件
+
+```
+pair<T,T> p(elem1, elem2);
+pair<T,T> p = make_pair(elem1, elem2);
 ```
