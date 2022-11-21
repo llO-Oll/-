@@ -2821,8 +2821,6 @@ reverse();
 sort();
 ```
 
-
-
 ### set/multiset容器
 
 简介
@@ -2835,10 +2833,7 @@ sort();
 
 属于关联式容器，底层是二叉树
 
-
-
 ```cpp
-
 set<T> s;
 
 
@@ -2856,8 +2851,6 @@ s.erase(elem);   //删除值为elem的元素
 s.find(key) //返回迭代器，没找到返回s.end();
 
 //统计
-
-
 ```
 
 #### pair对组
@@ -2882,15 +2875,11 @@ public:
         return v1 > v2;
     }
 }
-void test01(){
-    set<int> s1;
-}
-
 
 int main(){
     // 按照指定规则排序
     set<int, Mycompare> s1;
-    
+
     s1.insert(10);
     s1.insert(20);
     s1.insert(30);
@@ -2903,3 +2892,48 @@ int main(){
 
 }
 ```
+
+### map/multimap容器
+
+![](assets/2022-11-21-21-30-21-image.png)
+
+```cpp
+map<int,int> m;
+m.insert(pair<int,int>(1,10));    //采用匿名对组插入
+m.insert(pair<int,int>(2,20));
+m.insert(pair<int,int>(3,30));
+
+map<int,int> m2(m);        //拷贝构造
+
+map<int,int> m3 = m2;    //赋值
+
+// 访问某个位置的元素
+
+map<int, int>::iterator pos = m.find(3);
+if(pos!=m.end()){
+    cout <<"ket="<<(*pos).first<<"value="<<pos->second<<endl;
+}else{
+    cout<<"未查到元素"<<endl;
+}
+
+// 删除
+clear();
+erase(pos);
+erase(key);
+erase(beg,end);
+
+
+// 删除
+find(key);    //查找key是否存在，若存在返回该值的迭代器位置。不存在返回set.end();
+count(key);    
+```
+
+
+
+## 函数对象
+
+概念
+
+- 重载函数调用操作符的类，其对象常称为函数对象
+
+- 函数对象使用重载的`()`时，行为类似函数调用，也叫仿函数。
