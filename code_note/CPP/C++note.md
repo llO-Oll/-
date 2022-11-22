@@ -2928,8 +2928,6 @@ find(key);    //查找key是否存在，若存在返回该值的迭代器位置�
 count(key);    
 ```
 
-
-
 ## 函数对象
 
 概念
@@ -2937,3 +2935,207 @@ count(key);
 - 重载函数调用操作符的类，其对象常称为函数对象
 
 - 函数对象使用重载的`()`时，行为类似函数调用，也叫仿函数。
+
+### 谓词
+
+返回bool类型的仿函数称为**谓词**
+
+如果`operator()`接受一个参数，那么叫做一元谓词
+
+如果`operator()`接受两个参数，那么叫做二元谓词
+
+```cpp
+class MyCompare{
+public:
+    // 谓词
+    bool operator()(int val1, int val2){
+        return val1>val2;
+    }
+}
+
+int main(){
+    vector<int> v;
+    v.push_back(10);
+    v.push_back(30);
+    v.push_back(20);  
+
+    // 使用函数对象改变算法策略，变为排序规则从大到小
+    // 注意`MyCompare()`必须有`()`才是函数对象。
+    // `MyCompare`只是类
+    sort(v.begin(),v.end(),MyCompare());
+}
+```
+
+### 内建函数对象
+
+需要引入头文件`#include<functional>`
+
+#### 算术仿函数
+
+其中negate是一元运算，其它都是二元运算
+
+```cpp
+template<class C> C plus<T>        //加法仿函数
+template<class C> C minus<T>        //减法仿函数
+template<class C> C multiplies<T>    //乘法仿函数
+template<class C> C divides<T>       //除法仿函数
+template<class C> C modulus<T>       //取模仿函数
+template<class C> C negate<T>       //取反仿函数
+```
+
+#### 关系仿函数
+
+```cpp
+template<class C> bool equal_to<T>    //等于
+template<class C> bool not_equal<T>   //不等于
+template<class C> bool greater<T>   //大于
+template<class C> bool greater_equal<T>   //大于等于
+template<class C> bool less<T>   //小于
+template<class C> bool less_equal<T>   //小于等于
+```
+
+```cpp
+class MyCompare{
+public:
+    // 谓词
+    bool operator()(int val1, int val2){
+        return val1>val2;
+    }
+}
+
+int main(){
+    vector<int> v;
+    v.push_back(10);
+    v.push_back(30);
+    v.push_back(20);  
+
+    // 使用函数对象改变算法策略，变为排序规则从大到小
+    // 注意`MyCompare()`必须有`()`才是函数对象。
+    // `MyCompare`只是类
+    //sort(v.begin(),v.end(),MyCompare());
+
+    //降序
+    sort(v.begin(),v.end(),greater<int>());
+}
+```
+
+#### 逻辑仿函数
+
+```cpp
+template<class C> bool logic_and<T>   //逻辑与
+template<class C> bool logic_or<T>   //逻辑或
+template<class C> bool logic_not<T>   //逻辑非 取反
+```
+
+## STL常用算法
+
+- 算法主要有头文件`<algorithm>``<functional>``<numeric>`组成。
+
+- `<algorithm>`是所有STL头文件中最大的一个，范围涉及到比较、交换、查找、遍历操作、复制、修改等
+
+- `<numeric>`只包括几个在序列上面进行简单数学运算的模板函数。
+
+- `<functional>`定义了一些模板类，用以声明函数对象。
+
+### 常用遍历算法
+
+`for_each`    //遍历容器
+
+`transform`  //搬运容器到另一个容器中
+
+#### transform
+
+```cpp
+/*
+beg1: 源容器起始迭代器
+end1: 源容器结束迭代器
+beg2: 目标容器开始迭代器
+_func:函数或函数对象
+*/
+transform(iterator beg1, iterator end1,iterator beg2._func);
+```
+
+```cpp
+#include<iostream>
+#include<algorithm>
+#include<vector>
+using namespace std;
+
+
+class Transform{
+public:
+    int operator()(int v){
+        return v + 100;
+    }
+}
+int main(){
+    vector<int> v;
+    for(int i = 0;i < 10l i++){
+        v.push_back(i);
+    }
+    vector<int> v_target;
+    v_target.resize(v.size());
+    transform(v.begin(),v.end,v_target.begin(),Transform();
+    
+}
+```
+
+### 常用查找方法
+
+#### find
+
+查找内置数据类型
+
+```cpp
+#include<algorithm>
+int main(){
+    vector<int> v;
+    for(int i = 0;i<10;i++){
+        v.push_back(i);
+    }
+    vector<int>::iterator it = find(v.begin(),v.end(),5);
+}
+```
+
+查找自定义数据类型
+
+```cpp
+class Person{
+public:
+    Person(string name,int age){
+        this->mName = name;
+        this->mAge = age;
+    }
+
+    bool operator==(const Person & p){
+        if(this->mName == p.mName && this->mAge == p.Age){
+            return true;
+        }else{
+            return false;
+        }
+    }
+    string mName;
+    int mAge;
+}
+
+int main(){
+    vector<Person> v;
+    
+    Person p1("aaa",10);
+    Person p2("bbb",20);
+    Person p3("ccc",30);
+
+    v.push_back(p1);
+    v.push_back(p2);
+    v.push_back(p3);
+
+    Person pp("bbb",20);
+    
+    vector<Person>::iterator it = find(v.begin(),v.end(),pp);
+    if(it == v.end()){
+        cout<<"没有找到"<<endl;
+    }else{
+        cout<<"找到了"<<endl;
+    }
+}
+```
