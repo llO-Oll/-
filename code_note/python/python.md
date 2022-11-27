@@ -21,21 +21,17 @@
 lambda [arg1 [,arg2,...argn]]:expression
 ```
 
-1. 
+1. ```python
+   def sum(x,y):
+       
+   sum = lambda x,y : x+y
+   print(sum(1,2))
+   ```
 
 ```python
-def sum(x,y):
-    
 sum = lambda x,y : x+y
 print(sum(1,2))
 ```
-
-```python
-sum = lambda x,y : x+y
-print(sum(1,2))
-```
-
-
 
 # `if __name__ == '__main__':`
 

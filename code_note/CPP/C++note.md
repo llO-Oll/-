@@ -1417,6 +1417,8 @@ lambda 表达式的价值在于，就地封装短小的功能闭包，可以极�
 
 ## 动态内存与智能指针
 
+[C++11中智能指针的原理、使用、实现 - wxquare - 博客园 (cnblogs.com)](https://www.cnblogs.com/wxquare/p/4759020.html)
+
 在C++中，动态内存地管理是通过一对运算符来完成的`new`，在动态内存中为对象分配空间并返回一个指向该对象的指针，我们可以选择对对象进行初始化；`delete`，接受一个动态对象的指针，销毁该对象，并释放与之关联的内存。
 
 动态内存的使用很容易出问题，因为确保在正确的时间释放内存是极其困难的。有时我们会忘记释放内存，在这种情况下就会产生内存泄漏：有时在尚有指针引用内存的情况下我们就释放了它，在这种情况下就会产生引用非法内存的指针。
@@ -3076,7 +3078,7 @@ int main(){
     vector<int> v_target;
     v_target.resize(v.size());
     transform(v.begin(),v.end,v_target.begin(),Transform();
-    
+
 }
 ```
 
@@ -3099,6 +3101,8 @@ int main(){
 
 查找自定义数据类型
 
+需要重载`==`
+
 ```cpp
 class Person{
 public:
@@ -3120,7 +3124,7 @@ public:
 
 int main(){
     vector<Person> v;
-    
+
     Person p1("aaa",10);
     Person p2("bbb",20);
     Person p3("ccc",30);
@@ -3130,7 +3134,7 @@ int main(){
     v.push_back(p3);
 
     Person pp("bbb",20);
-    
+
     vector<Person>::iterator it = find(v.begin(),v.end(),pp);
     if(it == v.end()){
         cout<<"没有找到"<<endl;
@@ -3138,4 +3142,79 @@ int main(){
         cout<<"找到了"<<endl;
     }
 }
+```
+
+#### find_if
+
+```cpp
+#include<algorithm>
+using namespace std;
+class GreaterFive{
+public:
+    bool operator()(int val){
+        return val > 5;
+    }
+}
+
+void test01(){
+    vector<int> v;
+    for(int i=0;i<10;i++){
+        v.push_back(i);
+    }
+    vector<int>::iterator it = find_if(v.begin(),v.end(),GreaterFive());
+    if(it==v.end()){
+        cout<<"没找到"<<endl;
+    }else{
+        cout<<"找到大于5的数："<< *it <<endl;
+    }
+}
+```
+
+#### count
+
+### 常用排序
+
+#### sort
+
+#### random_shuffle
+
+#### merge
+
+合并两个容器至新的容器
+
+```cpp
+merge(iterator beg1,iterator end1,iterator beg2,iterator end2,iterator dest);
+```
+
+#### reverse
+
+### 常用拷贝和替换算法
+
+#### copy
+
+容器指定范围的元素拷贝到另一容器
+
+```cpp
+copy(iterator beg,iterator end,iterator dest);
+```
+
+#### replace
+
+将容器内指定范围内的旧元素替换为新元素
+
+```cpp
+replace(iterator beg,iterator end,old_value,new_value)
+```
+
+### 常用的算术生成算法
+
+使用时包含的头文件为`#include<numeric>`
+
+- `accumulate`计算容器元素累计总和
+
+- `fill`向容器中添加元素
+
+```cpp
+accumulate(iterator beg,iterator end, value);//value是起始值
+fill(iterator beg,iterator end, value);
 ```
