@@ -2332,14 +2332,14 @@ public:
     virtual void speak(){
         std::cout<<"动物在说话"<<std::endl;
     }
-}
+};
 
 class Cat : public:Animal{
 public:
     void speak(){
         std::cout<<"小猫在说话"<<std::endl;
     }
-}
+};
 void doSpeak(Animal &animal){
     animal.speak();
 }
@@ -2765,6 +2765,31 @@ empty();
 size();
 ```
 
+### priority_queue
+
+```cpp
+和队列基本操作相同:
+
+top 访问队头元素
+empty 队列是否为空
+size 返回队列内元素个数
+push 插入元素到队尾 (并排序)
+emplace 原地构造一个元素并插入队列
+pop 弹出队头元素
+swap 交换内容
+//使用基本数据类型时，只需要传入数据类型，默认是大顶堆。即降序
+//升序队列
+priority_queue <int,vector<int>,greater<int> > q;
+//降序队列
+priority_queue <int,vector<int>,less<int> > q;
+/*
+greater和less是std实现的两个仿函数
+（就是使一个类的使用看上去像一个函数。
+其实现就是类中实现一个operator()，这个类就有了类似函数的行为，
+就是一个仿函数类了）
+*/
+```
+
 ### list容器
 
 双向链表
@@ -2839,6 +2864,8 @@ sort();
 set<T> s;
 
 
+
+
 s.insert(elem);
 
 
@@ -2851,6 +2878,9 @@ s.erase(elem);   //删除值为elem的元素
 //查找
 //end迭代器指向末尾元素的下一个位置。
 s.find(key) //返回迭代器，没找到返回s.end();
+s.begin()    //指向第一个元素的迭代器
+s.rbegin()    //指向最后一个元素的迭代器
+s.rend()    //指向第一个元素的前一个位置
 
 //统计
 ```
@@ -2862,6 +2892,7 @@ s.find(key) //返回迭代器，没找到返回s.end();
 ```
 pair<T,T> p(elem1, elem2);
 pair<T,T> p = make_pair(elem1, elem2);
+pair<T,T> p = {elem1,elem2};
 ```
 
 #### set容器排序
@@ -3069,16 +3100,15 @@ public:
     int operator()(int v){
         return v + 100;
     }
-}
+};
 int main(){
     vector<int> v;
-    for(int i = 0;i < 10l i++){
+    for(int i = 0;i < 10; i++){
         v.push_back(i);
     }
     vector<int> v_target;
     v_target.resize(v.size());
-    transform(v.begin(),v.end,v_target.begin(),Transform();
-
+    transform(v.begin(),v.end(),v_target.begin(),Transform());
 }
 ```
 
@@ -3120,7 +3150,7 @@ public:
     }
     string mName;
     int mAge;
-}
+};
 
 int main(){
     vector<Person> v;
@@ -3154,7 +3184,7 @@ public:
     bool operator()(int val){
         return val > 5;
     }
-}
+};
 
 void test01(){
     vector<int> v;

@@ -15,7 +15,6 @@ int findMaxForm(vector<string>& strs, int m, int n){
     vector<vector<vector<int>>> dp(s+1,vector<vector<int>>(m+1,vector<int>(n+1,0)));
     for(int k=1;k<=s;k++){
         auto p=count(strs[k-1]);
-        cout<<p.first<<endl;
         for(int i=0;i<=m;i++){
             for(int j=0;j<=n;j++){
                 if(i>=p.first && j>=p.second){
@@ -48,7 +47,7 @@ int main()
     vector<string> strs={"10", "0001", "111001", "1", "0"};
     int m=5,n=3;
     int res=sl.findMaxForm(strs,m,n);
-    cout<<res<<endl;
+    // cout<<res<<endl;
     system("pause");
     return 0;
 }
