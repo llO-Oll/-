@@ -47,7 +47,7 @@ int main()
     vector<string> strs={"10", "0001", "111001", "1", "0"};
     int m=5,n=3;
     int res=sl.findMaxForm(strs,m,n);
-    // cout<<res<<endl;
+    cout<<res<<endl;
     system("pause");
     return 0;
 }
