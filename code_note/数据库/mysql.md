@@ -119,7 +119,6 @@ SELECT 字段列表 FROM 表名列表 WHERE 条件列表
 GROUP BY 分组字段列表 HAVING 分组后条件列表
 ORDER BY 排序字段列表
 LIMIT 分页参数
-
 ```
 
 

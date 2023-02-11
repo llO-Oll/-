@@ -3340,7 +3340,10 @@ replace(iterator beg,iterator end,old_value,new_value)
 
 - `fill`向容器中添加元素
 
+- `iota`用于产生连续的值
+
 ```cpp
 accumulate(iterator beg,iterator end, value);//value是起始值
 fill(iterator beg,iterator end, value);
+iota(iterator beg,iterator end,initial);
 ```

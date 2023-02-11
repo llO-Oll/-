@@ -5,6 +5,9 @@
 using namespace std;
 int main()
 {
-    cout<<"hello"<<endl;
+    int x = -2;
+    
+    int y = x>>1;
+    cout<< y <<endl;
     return 0;
 }
