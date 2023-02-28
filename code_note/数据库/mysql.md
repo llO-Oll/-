@@ -169,8 +169,6 @@ select workaddress count(*) from emp where age < 45 group by workaddress having 
 
 ## 函数
 
-
-
 ## 约束
 
 作用于**表中字段**上的规则，用于限制存储在表中的数据。
@@ -178,8 +176,6 @@ select workaddress count(*) from emp where age < 45 group by workaddress having 
 作用：保证数据库中数据的正确、有效性和完整性。
 
 <img src="assets/2023-02-11-14-38-40-image.png" title="" alt="" data-align="left">
-
-
 
 示例
 
@@ -190,8 +186,6 @@ select workaddress count(*) from emp where age < 45 group by workaddress having 
 | age    | 年龄     | int         | 大于0，并且小于等于120 | CHECK                      |
 | status | 状态     | char(1)     | 默认为1          | DEFAULT                    |
 | gender | 性别     | char(1)     | 无             |                            |
-
-
 
 ```sql
 create table user(
@@ -208,10 +202,249 @@ values('tom1',19,'1','男'),
 ('tom2',25,'0','男');
 ```
 
-
-
 ### 外键约束
 
 让两张表的数据之间建立连接，从而保证数据的一致性和完整性。
 
+```sql
+alter table [表名] add constraint [外键名字] foreign key [外键字段名]
+references [主表列名];
+alter table [表名] drop foreign key [外键名字];
+```
 
+| 行为        | 说明                                                       |
+|:---------:| -------------------------------------------------------- |
+| NO ACTION | 当在父表中删除/更新对应记录时，首先检查该记录是否有对应外键，如果有则不允许删除/更新。与RESTRICT一致。 |
+| RESTRICT  | 当在父表中删除/更新对应记录时，首先检查该记录是否有对应外键，如果有则不允许删除/更新。             |
+| CASCADE   | 当在父表中删除/更新对应记录时，首先检查该记录是否有对应外键，如果有，则也删除/更新外键在子表的记录。      |
+| SET NULL  | 当在父表中删除对应记录时，首先检查该记录是否有对应外键，如果有则设置子表中该外键值为null。          |
+
+```sql
+ALTER TABLE 表名 ADD CONSTRAINT 外键名称 FOREIGN KEY 外键字段 
+REFERENCES 主表名(主表字段名) ON UPDATE CASCADE ON DELETE CASCADE;
+```
+
+### 多表查询
+
+#### 一对多
+
+![](assets/2023-02-13-15-31-40-image.png)
+
+#### 多对多
+
+<img src="assets/2023-02-13-15-32-07-image.png" title="" alt="" data-align="center">
+
+创建中间表
+
+```sql
+create table student_course(
+    id int auto_increament comment '主键' primary key,
+    studentid int not null comment '学生ID',
+    courseid int not null comment '课程ID',
+    constraint fk_courseid foreign key (courseid) 
+references course (id),
+    constraint fk_courseid foreign key (studentid) 
+references student (id)
+)comment '学生课程中间表';
+
+insert into student_course values (null,1,1),(null,1,2),
+(null,1,3),(null,2,2),(null,2,3),(null,3,4);
+```
+
+#### 连接查询-内连接
+
+内连接查询两张表交集部分。
+
+![](assets/2023-02-13-15-59-21-image.png)
+
+#### 连接查询-外连接
+
+外连接
+
+![](assets/2023-02-13-16-05-28-image.png)
+
+#### 连接查询-自连接
+
+```sql
+-- 隐式自连接，查询员工 及其 所属领导的名字 ，自连接必须起别名
+select a.name, b.name from emp a, emp b where a.managerid = b.id;
+
+-- 显示自连接，查询所有员工emp 及其领导的名字emp,如果员工没有领导，也需要查询出来
+select a.name '员工', b.name '领导' from emp a left join emp b on a.managerid = b.id;
+```
+
+#### 连接查询-union，union all
+
+![](assets/2023-02-14-16-25-42-image.png)
+
+### 子查询
+
+![](assets/2023-02-14-16-38-51-image.png)
+
+## 事务
+
+事务是一组操作的集合，它是一个不可分割的工作单位，事务会把所有的操作作为一个整体一起向系统提交或撤销操作请求，即这些操作要么**同时成功，要么同时失败**。
+
+![](assets/2023-02-15-14-27-47-image.png)
+
+```sql
+-- 查看提交方式，1自动，0手动
+select @@autocommit;
+
+-- 设置手动提交
+set @@autocommit = 0;
+
+
+-- 提交事务
+commit;
+
+-- 回滚事务
+```
+
+### 事务的四大特性
+
+![](assets/2023-02-15-14-30-09-image.png)
+
+### 并发事务
+
+![](assets/2023-02-15-14-32-07-image.png)
+
+### 事务隔离级别
+
+`√`表示会出现问题
+
+`x`表示不会出现问题
+
+![](assets/2023-02-15-14-41-29-image.png)
+
+# 存储引擎
+
+![](assets/2023-02-15-14-59-26-image.png)
+
+存储引擎就是存储数据，建立索引，更新/查询数据等技术的实现方式。存储引擎是基于表的，而不是基于库的，所以存储引擎也被称为表类型。
+
+在创建表时，指定存储引擎
+
+```sql
+create table 表名(
+
+)ENGINE = INNODB[COMMENT 标注释];
+
+
+
+-- 查询当前数据库支持的存储引擎
+show engines;
+```
+
+# 索引
+
+帮助mysql**高效获取数据**的**数据结构（有序）**。索引在**存储引擎**里。
+
+![](assets/2023-02-16-19-23-42-image.png)
+
+![](assets/2023-02-16-19-24-57-image.png)
+
+我们平常所说的索引，如果没有特别指明，都是指B+Tree结构组织的索引。
+
+![](assets/2023-02-16-19-32-05-image.png)
+
+![](assets/2023-02-16-19-38-03-image.png)
+
+## SQL索引性能分析
+
+### SQL执行频率
+
+```sql
+show global status like 'Com_______';
+```
+
+### 慢查询日志
+
+记录所有执行时间超过指定参数(long_query_time，默认10秒)的所有SQL语句日志。
+
+在`/etc/my.cnf`中配置如下信息：
+
+```
+# 开启MySQL慢日志查询开关
+slow_query_log = 1
+
+# 设置慢日志的时间为2秒，SQL语句执行时间超过2秒被视为慢查询，记录
+long_query_time = 2
+```
+
+慢查询日志文件
+
+`/var/lib/mysql/localhost-slow.log`
+
+### profile详情
+
+show profiles能够帮助我们了解SQL语句的耗时。
+
+```sql
+# 查看每一条SQL的耗时基本情况
+show profiles;
+
+
+# 查看指定query_id的SQL语句各个阶段的耗时情况
+show profile for query query_id;
+
+
+# 查看指定query_id的sql语句CPU的使用情况
+show profile cpu for query query_id;
+```
+
+### explain执行计划
+
+![](assets/2023-02-18-11-14-36-image.png)
+
+![](assets/2023-02-18-11-15-07-image.png)
+
+### 验证索引效率
+
+建立索引
+
+```sql
+create index 索引名 on 表名(字段名);
+```
+
+```sql
+-- 在未建立索引之前，执行如下sql语句，查看sql的耗时。
+select * from tb_sku where sn='10001';
+
+-- 针对字段创建索引
+```
+
+### 最左前缀法则
+
+如果索引了多列(联合索引)，要遵守最左前缀法则。最左前缀法则指的是查询从索引的最左列开始，并且不跳过索引中的列。
+如果跳跃某一列，索引将部分失效(后面的字段索引失效)。
+
+## 索引使用
+
+- 不要在索引列上运算，索引会失效。
+
+- 字符串类型字段使用时，不加引号，索引将失效
+
+- 模糊查询：如果头部模糊匹配，索引会失效。
+
+- or连接的条件：用or分割开的条件，前面有索引，后面没有索引，索引会失效。
+
+- 如果MySQL评估索引比全表查询慢，则不会使用索引。
+
+- 
+
+### 覆盖索引
+
+![](assets/2023-02-25-15-36-19-image.png)
+
+### 前缀索引
+
+
+
+### 单列索引和联合索引
+
+尽量使用联合索引
+
+```sql
+create unique index idx_phone_name on tb_user(phone, name);
+```
