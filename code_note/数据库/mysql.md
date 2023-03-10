@@ -120,7 +120,7 @@ DELETE FROM 表名 [WHERE 条件]
 SELECT 字段列表 FROM 表名列表 WHERE 条件列表 
 GROUP BY 分组字段列表 HAVING 分组后条件列表
 ORDER BY 排序字段列表
-LIMIT 分页参数
+LIMIT 查询结果的索引值(默认从0开始),查询结果返回的数量
 ```
 
 ### 条件查询WHERE
@@ -439,8 +439,6 @@ select * from tb_sku where sn='10001';
 
 ### 前缀索引
 
-
-
 ### 单列索引和联合索引
 
 尽量使用联合索引
@@ -448,3 +446,73 @@ select * from tb_sku where sn='10001';
 ```sql
 create unique index idx_phone_name on tb_user(phone, name);
 ```
+
+## 设计原则
+
+1.针对于数据量较大，且查询比较频繁的表建立索引。
+2． 针对于常作为查询条件（where)、排序（order by)、分组(group by)操作的字段建立索引。
+3.尽量选择区分度高的列作为索引，尽量建立唯一索引，区分度越高，使用索引的效率越高。
+4．如果是字符串类型的字段，字段的长度较长，可以针对于字段的特点，建立前缀索引。
+5．尽量使用联合索引，减少单列索引，查询时，联合索引很多时候可以覆盖索引，节省存储空间，避免回表，提高查询效率。
+6．要控制索引的数量，索引并不是多多益善，索引越多，维护索引结构的代价也就越大，会影响增删改的效率。
+7．如果索引列不能存储NULL值，请在创建表时使用NOTNULL约束它。当优化器知道每列是否包含NULL值时，它可以更好地确定哪个索引最有效地用于查询。
+
+# SQL优化
+
+## 插入数据
+
+### insert优化
+
+1. 手动提交事务
+
+```sql
+start transaction
+insert into tb_test values(1,'tom'),(2,'Cat'),(3,'jerry');
+insert into tb_test values(4,'Tom'),(5,'Cat'),(6,'jerry');
+commit;
+```
+
+2. 主键顺序插入
+
+### 大批量插入数据
+
+```sql
+# 客户端连接服务端时，加上参数 --local-infile
+mysql--local-infile -u root -p
+
+# 设置全局参数local_infile为1，开启从本地加载文件导入数据的开关
+set global local_infile = 1;
+
+# 执行load指令将准备好的数据，加载到表结构中
+load data local infile '/root/sql1.log' into table 'tb_user' fields terminated by ',' lines terminated by '\n';
+```
+
+## 主键优化
+
+在InnoDB存储引擎中，表数据都是根据**主键顺序**组织存放的，这种存储方式的表称为索引组织表(index organized table IOT)。
+
+![](assets/2023-02-28-14-32-43-image.png)
+
+![](assets/2023-02-28-14-37-57-image.png)
+
+## order by优化
+
+用索引排序优化
+
+## group by优化
+
+通过索引来提高效率
+
+需要满足最左前缀法则
+
+## limit优化
+
+## count优化
+
+![](assets/2023-02-28-15-31-32-image.png)
+
+## update优化
+
+更新索引字段，否则行锁->表锁。
+
+![](assets/2023-02-28-15-42-31-image.png)

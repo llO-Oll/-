@@ -554,7 +554,7 @@ int main()
        vector<int>::iterator i;
     //用 != 比较两个迭代器
     for (i = v.begin(); i != v.end(); ++i)
-        cout << *i << " ";
+        cout << *i << " ";    
 
        cout << endl << "3:" << endl;
     for (i = v.begin(); i < v.end(); ++i) //用 < 比较两个迭代器
@@ -3355,8 +3355,6 @@ accumulate(iterator beg,iterator end, value);//value是起始值
 fill(iterator beg,iterator end, value);
 iota(iterator beg,iterator end,initial);
 ```
-
-
 
 # 类型转换
 
