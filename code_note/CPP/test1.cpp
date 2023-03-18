@@ -9,6 +9,9 @@ public:
     bool operator()(int val){
         return val > 5;
     }
+    static int func(){
+
+    };
 };
 
 void test01(){
