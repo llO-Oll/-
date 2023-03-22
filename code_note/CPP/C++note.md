@@ -2990,7 +2990,7 @@ public:
     bool operator()(int v1 ,int v2){
         return v1 > v2;
     }
-}
+}；
 
 int main(){
     // 按照指定规则排序
@@ -3381,6 +3381,31 @@ void test01(){
 ```
 
 #### count
+
+
+
+#### lower_bound() &&upper_bound()
+
+用于在指定区域内查找不小于目标值的第一个元素。
+
+```cpp
+//在 [first, last) 区域内查找第一个不小于 val 的元素
+ForwardIterator lower_bound (ForwardIterator first, ForwardIterator last,
+                             const T& val);
+//在 [first, last) 区域内查找第一个不符合 comp 规则的元素
+ForwardIterator lower_bound (ForwardIterator first, ForwardIterator last,
+                             const T& val, Compare comp);
+
+
+//在 [first, last) 区域内查找第一个大于 val 的元素
+ForwardIterator upper_bound (ForwardIterator first, ForwardIterator last,
+                             const T& val);
+//在 [first, last) 区域内查找第一个不符合 comp 规则的元素
+ForwardIterator upper_bound (ForwardIterator first, ForwardIterator last,
+                             const T& val, Compare comp); 
+```
+
+
 
 ### 常用排序
 
