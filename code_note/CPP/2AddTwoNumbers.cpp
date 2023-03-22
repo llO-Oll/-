@@ -23,6 +23,6 @@ int main()
 {
     vector<int> a={2,7,9,11};
     twoSum(a,9);
-    system("pause");
+    // system("pause");
     return 0;
 }
