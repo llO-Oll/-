@@ -1149,7 +1149,53 @@ c++使用标准库类处理面向流的输入和输出：
 - fstream处理文件IO
 - stringstream完成内存string的IO
 
-------
+
+
+## string流
+
+
+
+```cpp
+#include <string>
+#include <sstream>
+
+sstream strm;	// sstream是头文件中定义的一个类型
+sstream strm(s); // 保存strm所保存的string的拷贝
+strm.str();		// 返回strm所保存的string的拷贝
+strm.str(s);	// 将string s 拷贝到strm中
+```
+
+
+
+### istringstream
+
+读取string数据
+
+```cpp
+#include <iostream>
+#include <string>
+#include <sstream>
+
+using namespace std;
+
+int main(){
+
+    string s = "hello world!";
+    istringstream iss(s);
+    string temp;
+
+    while (getline(iss, temp,' ')) {
+        cout<<temp<<endl;
+    }
+}
+
+/*
+hello
+world!
+*/
+```
+
+
 
 # 顺序容器
 
