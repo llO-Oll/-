@@ -127,6 +127,26 @@ LIMIT 查询结果的索引值(默认从0开始),查询结果返回的数量
 
 ![](assets/2023-02-11-10-05-49-image.png)
 
+### 聚合函数
+
+```mysql
+-- 统计员工数量
+select count(*) from emp;
+
+-- 统计员工平均年龄
+select avg(age) from emp;
+
+-- 最大值和最小值
+max()
+min()
+
+-- 统计西安地区员工年龄之和
+select sum(age) from emp where workaddress = '西安';
+
+```
+
+
+
 ### 分组查询GROUP BY
 
 ```sql
@@ -157,17 +177,100 @@ select workaddress count(*) from emp where age < 45 group by workaddress having 
 
 ![](assets/2023-02-11-11-01-01-image.png)
 
+
+
+```mysql
+-- 案例：
+-- 查询年龄为20，21，22，23岁的女性员工信息
+select * from emp where gender = '女' and age in(20,21,22,23);
+
+-- 查询性别为男，并且年龄在20-40岁以内的姓名为三个字的员工。
+select * from emp where gender = '男' and (age between 20 and 40) and name like '___';
+
+-- 查询所有年龄小于等于35岁员工的姓名和年龄,并对查询结果按年龄升序排序，如果年龄相同按入职时间降序排序。
+select name,age from emp where age <= 35 order by age asc, entrydate desc;
+
+
+```
+
+
+
 ## DCL
 
 数据控制语言
 
 ![](assets/2023-02-11-11-12-56-image.png)
 
+```mysql
+-- 创建用户 itcast,只能再当前主机localhost访问，密码123456;
+create user 'itcast'@'localhost' identified by '123456';
+
+-- 创建用户 heima,可以在任意主机访问该数据库，密码123456;
+create user 'heima'@'%' identified by '123456';
+
+-- 修改用户 heima 的访问密码为 1234;
+alter user 'heima'@'%' identified with mysql_native_password by '1234';
+
+-- 删除itcast@localhost用户
+drop user 'itcast'@'localhost';
+```
+
 ![](assets/2023-02-11-14-01-05-image.png)
+
+```mysql
+
+```
 
 <img title="" src="assets/2023-02-11-14-02-18-image.png" alt="" data-align="center">
 
+
+
 ## 函数
+
+![image-20230329191134566](./assets/image-20230329191134566.png)
+
+```mysql
+-- 通过数据库函数，生成一个六位数的随机验证码
+select lpad(round(rand()*10000000,0),6,'0')
+```
+
+
+
+### 流程函数
+
+![image-20230327104159553](./assets/image-20230327104159553.png)
+
+```mysql
+select ifnull(null,'Default');
+-- 返回 Default
+
+
+-- 查询emp表的员工姓名和工作地址（工作地址为北京/上海，返回一线城市。工作地址为其他，返回二线城市）
+
+select
+	name,
+	(case workaddress when '北京' then '一线城市' when '上海' then '一线城市' else '二线城市' end) as '工作地址'
+from emp;
+
+
+-- 案例:统计班级各个学员的成绩,展示的规则如下:
+-- >= 85，展示优秀
+-- >= 60，展示及熬
+-- 否则，展示不及格
+
+select
+	id,
+	name,
+	(case when math >= 85 then '优秀' when math >= 60 then '及格' else '不及格' end) as '数学'),
+	(case when english >= 85 then '优秀' when english >= 60 then '及格' else '不及格' end) as '英语'),
+	(case when chinese >= 85 then '优秀' when chinese >= 60 then '及格' else '不及格' end) as '语文')
+from score;
+
+```
+
+![image-20230327105324600](./assets/image-20230327105324600.png)
+
+
 
 ## 约束
 
@@ -263,6 +366,10 @@ insert into student_course values (null,1,1),(null,1,2),
 
 ![](assets/2023-02-13-16-05-28-image.png)
 
+左连接中，若表2中有些数据没有匹配项，则返回结果时，那些行中的表2字段返回null。
+
+
+
 #### 连接查询-自连接
 
 ```sql
@@ -280,6 +387,31 @@ select a.name '员工', b.name '领导' from emp a left join emp b on a.manageri
 ### 子查询
 
 ![](assets/2023-02-14-16-38-51-image.png)
+
+```mysql
+-- 列子查询
+
+-- 查询 销售部 和 市场部 的所有员工信息
+select * from emp where dept_id in (select id from dept where name = '销售部' or name = '市场部');
+
+
+-- 查询比 财务部 所有人工资都高的员工信息
+select * from emp where salary > all(select salary from emp where dept_id = (select id from dept where name = '财务部'));
+
+-- 查询比 研发部 其中任意一人工资高的员工信息
+select * from emp where salary > any(select salary from emp where dept_id = (select id from dept where name = '研发部'));
+
+
+-- 行子查询
+
+-- 查询与 张无忌 的薪资及直属领导相同的员工信息
+
+select * from emp where (salary,managerid) = (select salary,managerid from emp where name = '张无忌');
+
+
+```
+
+
 
 ## 事务
 

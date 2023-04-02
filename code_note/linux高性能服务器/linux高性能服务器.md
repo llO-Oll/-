@@ -307,6 +307,22 @@ Return:
 
 ## 数据读写
 
+
+
+## 带外数据(out—of—band data)
+
+OOB有时也称为加速数据(expedited data)，
+
+是指连接双方中的一方发生重要事情，想要迅速地通知对方。
+
+这种通知在已经排队等待发送的任何“普通”(有时称为“带内”)数据之前发送。
+
+带外数据设计为比普通数据有更高的优先级。
+
+带外数据是映射到现有的连接中的，而不是在客户机和服务器间再用一个连接。
+
+
+
 ### TCP数据读写
 
 ```c
@@ -690,6 +706,563 @@ int main(int argc ,char* argv[]){
     close(sock);
     return 0;
 }
+```
+
+## fcntl函数
+
+file control，对文件进行控制
+
+```c
+#include <fcntl.h>
+int fcntl(int fd, int cmd, ……);
+
+/* 将文件描述符设置为非阻塞 */
+int setnonblocking(int fd)
+{
+	int old_option = fcntl(fd, F_GETFL);	// 获取文件描述符 旧的状态标志
+	int new_option = old_option | O_NONBLOCK;	// 设置非阻塞标志
+	fcntl(fd, F_SETFL, new_option);
+	return old_option;	// 返回 旧的状态标志，以便日后恢复该状态标志
+}
+
+```
+
+
+
+# I/O复用
+
+I/O复用 使得程序能够**监控多个文件表述符**。
+
+下列情况需要使用I/O复用技术：
+
+1. 客户端同时处理多个socket。比如非阻塞的connect技术
+2. 客户端同时处理用户输入和网络连接
+3. TCP服务器要同时处理监听socket和连接socket。
+4. ……
+
+
+
+## select系统调用
+
+轮询感兴趣的文件描述符
+
+```c
+#include <sys/select.h>
+/*
+args:
+	nfds: 指定被监听的文件描述符总数。描述符从0开始，nfds通常是最大描述符+1
+	readfds、writefds、exceptfds: 可读、可写、异常文件描述符
+	timeout: 设置select函数超时时间
+return:
+	成功 返回 就绪的可读可写异常的文件描述符总数
+	失败 返回 -1
+*/
+int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+          struct timeval* timeout);
+
+```
+
+
+
+`select`接受普通数据和带外数据
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
+
+int main(int argc, char* argv[]){
+	if( argc <= 2){
+		printf("usage: %s ip_address port_number\n", basename(argv[0]));
+		return 1;
+    }
+    const char* ip = argv[1];
+    int port = atoi(argv[2]);
+    
+    /* 创建一个IPv4 socket地址 */
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero(&address, sizeof(address));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET, ip, &address.sin_addr);
+    address.sin_port = htons(port);
+    
+    int listenfd = socket(PF_INET, SOCK_STREAM, 0);
+    assert( listenfd >= 0 );
+    ret = bind(listenfd, (struct sockaddr*)&address, sizeof(address));
+    assert(ret != -1);
+    ret = listen(listenfd,5);
+    assert(ret != -1);
+   
+    /* 接受socket连接 */
+    struct sockaddr_in client_address;
+    socklen_t client_addrlength = sizeof(client_address);
+    int connfd = accept(listenfd, (struct sockaddr* )&client_address,
+                       &client_addrlength);
+    if( connfd < 0 ){
+		printf("errno is: %d\n",errno);
+    	close(listenfd);
+    }
+    char buf[1024];
+    /* fd_set 一组文件描述字(fd)的集合，它用一位来表示一个fd */
+    fd_set read_fds;
+    fd_set exception_fds;
+    /* FD_ZERO 将指定的文件描述符集清空，在对文件描述符集合进行设置前，必须对其进行初始化 */
+    FD_ZERO(&read_fds);
+    FD_ZERO(&exception_fds);
+    
+    while(1){
+		memset( buf, '\0', sizeof( buf ));
+        /*
+        	每次调用select前都要重新在 read_fds 和 exception_fds 中设置文件描述符connfd，因为事件发生后，文件描述集合将被内核修改。
+        	FD_SET 用于在文件描述符集合中增加一个新的文件描述符。
+        */
+        FD_SET( connfd, &read_fds); //将connfd套节字加入到集合read_fds
+        FD_SET( connfd, &exception_fds); //将connfd套节字加入到集合exception_fds
+        ret = select( connfd + 1, &read_fds, NULL, &exception_fds, NULL);
+        if( ret < 0){
+			printf("selection failure\n");
+			break;
+        }
+        
+        /*
+        	对于可读事件,采用普通的 recv 函数读取数据
+        	FD_ISSET(int fd,fd_set *fdset);用于测试指定的文件描述符是否在该集合中。
+        */
+        if( FD_ISSET(connfd, &read_fds) ){
+			ret = recv(connfd, buf, sizeof(buf)-1, 0);
+			if(ret <= 0){
+				break;
+			}
+            printf("get %d bytes of normal data: %s\n", ret, buf);
+        }
+        /* 对于异常事件，采用带MSG_OOB标志的recv函数读取带外数据 */
+        else if(FD_ISSET(connfd, &exception_fds)){
+			ret = recv(connfd, buf, sizeof(buf)-1, MSG_OOB);
+    		if( ret<=0 ){
+				break;
+            }
+            printf("get %d bytes of oob data: %s\n", ret, buf);
+        }
+    }
+    close(connfd);
+    close(listenfd);
+    return 0;
+}
+
+```
+
+## poll
+
+和`select`类似，在指定时间内轮询一定数量的文件描述符，以测试其中是否有就绪文件描述符。
+
+```c
+#include <poll.h>
+/*
+
+@param 	fds: 监听的事件集合
+@param	nfds: fds的大小
+@param	timeout: 单位毫秒
+			-1	将永远阻塞直到某个事件发生
+			0	立即返回
+@return:
+	和select一样
+*/
+int poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+
+struct pollfd{
+	int fd;	//文件描述符
+    short events;	//注册的事件 poll需要监听的事件
+    short revents;	//实际发生的事件，由内核填充
+}
+```
+
+
+
+## epoll
+
+epoll是linux特有的I/O复用函数。
+
+不需要像`select`和`poll`那样重复传入文件描述符集。使用**一个额外的文件描述符** 标识 文件描述符集（或者叫事件集）。
+
+```c
+#include <sys/epoll.h>
+
+int epoll_create(int size);
+
+/*
+操作epoll内核事件表
+@param epfd:内核事件表
+@param op:指定操作类型
+		EPOLL_CTL_ADD	往事件表中注册fd上的事件
+		EPOLL_CTL_MOD	修改fd上的注册事件
+		EPOLL_CTL_DEL	删除fd上的注册事件
+		
+@param fd:要操作的文件描述符
+@param event:
+@return:
+	success	0
+	fail	-1
+*/
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+
+/*
+timeout时间内监听一组文件描述符上的事件。
+如果检测到事件，就将所有就绪事件从 内核事件表epfd 中复制到 events 指向的数组中。
+@param maxevents:最多监听事件个数
+@return:
+	成功	返回就绪的文件描述符个数
+	失败	返回-1
+*/
+int epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
+
+
+```
+
+
+
+```c
+/* 如何索引poll返回的就绪文件描述符 */
+int ret = poll(fds, MAX_EVENT_NUMBER, -1);
+/* 必须遍历所有已注册文件描述符并找到其中的就绪者 */
+for(int i=0;i<MAX_EVENT_NUMBER;++i){
+	if(fds[i].revents & POLLIN){	/* 判断第i个文件描述符是否就绪 */
+		int sockfd = fds[i].fd;
+        /* 处理sockfd */
+    }
+}
+
+/* 如何索引epoll返回的就绪文件描述符 */
+int ret = epoll_wait(epollfd, events, MAX_EVENT_NUMBER, -1);
+/* 仅遍历就绪的ret个文件描述符 */
+for(int i=0;i<ret;i++){
+	int sockfd = events[i].data.fd;
+	/* sockfd肯定就绪，直接处理 */
+}
+
+
+```
+
+
+
+
+
+
+
+### LT和ET模式
+
+**水平触发(level-triggered)**
+
+- socket接收缓冲区不为空 有数据可读 读事件一直触发
+- socket发送缓冲区不满 可以继续写入数据 写事件一直触发
+
+**边沿触发(edge-triggered)**
+
+- socket的接收缓冲区状态变化时触发读事件，即空的接收缓冲区刚接收到数据时触发读事件
+- socket的发送缓冲区状态变化时触发写事件，即满的缓冲区刚空出空间时触发读事件
+
+边沿触发仅触发一次，水平触发会一直触发。
+
+```
+**事件宏**
+
+EPOLLIN ： 表示对应的文件描述符可以读（包括对端SOCKET正常关闭）；
+EPOLLOUT： 表示对应的文件描述符可以写；
+EPOLLPRI： 表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）；
+EPOLLERR： 表示对应的文件描述符发生错误；
+EPOLLHUP： 表示对应的文件描述符被挂断；
+EPOLLET： 将 EPOLL设为边缘触发(Edge Triggered)模式（默认为水平触发），这是相对于水平触发(Level Triggered)来说的。
+EPOLLONESHOT： 只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里
+```
+
+
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <pthread.h>
+
+#define MAX_EVENT_NUMBER 1024
+#define BUFFER_SIZE 10
+
+int setnonblocking(int fd){
+	int old_option = fcntl(fd,F_GETFL);
+	int new_option = old_option | O_NONBLOCK;
+	fcntl(fd, F_SETFL, new_option);
+}
+/* 将文件描述符fd上的EPOLLIN注册到epollfd指示的epoll内核事件表中,参数enable_et指定是否对fd启用ET模式 */
+void addfd(int epollfd, int fd, bool enable_et){
+	epoll_event event;
+	event.data.fd = fd;
+	event.events = EPOLLIN;		// EPOLLIN 表示可读事件
+	if(enable_et){
+		event.events |= EPOLLET;
+	}
+	epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+	setnonblocking(fd);
+}
+/* LT模式的工作流程 */
+void lt(epoll_event* events, int number, int epollfd, int listenfd)
+{
+	char buf[BUFFER_SIZE];
+	for(int i=0;i<number;i++){
+		int sockfd = events[i].data.fd;
+		if(sockfd == listenfd){
+			struct sockaddr_in client_address;
+			socklen_t client_addrlength = sizeof(client_address);
+			int connfd = accept(listenfd,(struct sockaddr*)&client_address,&client_addrlength );
+			addfd(epollfd, connfd, false);
+		}
+		else if(events[i].events & EPOLLIN)
+		{
+			/* 只要 socket 读缓存中还有未读出的数据,这段代码就被触发 */
+			printf("event trigger once\n");
+			memset(buf,'\0',BUFFER_SIZE);
+			int ret = recv(sockfd, buf, BUFFER_SIZE-1, 0);
+			if(ret <= 0){
+				close(sockfd);
+				continue;
+			}
+			printf("get %d bytes of content: %s\n",ret,buf);
+		}
+		else
+		{
+			printf("something else happened \n");
+		}
+	}
+}
+
+/* ET模式的工作流程 */
+
+void et(epoll_event* events,int number, int epollfd, int listenfd)
+{
+	char buf[BUFFER_SIZE];
+	for(int i=0;i<number;i++){
+		int sockfd = events[i].data.fd;
+		if( sockfd == listenfd ){
+			struct sockaddr_in client_address;
+			socklen_t client_addrlength = sizeof(client_address);
+			int connfd = accept(listenfd,(struct sockaddr*)&client_address, &client_addrlength );
+			addfd(epollfd, connfd, true);	
+		}
+		else if(events[i].events & EPOLLIN)
+		{
+			/* 这段代码不会重复触发,所以我们循环读取数据，确保把socket读缓存中的所有数据读出 */
+			printf("event trigger once\n");
+			while(1)
+			{
+				memset(buf, '\0', BUFFER_SIZE);
+				int ret = recv( sockfd, buf, BUFFER_SIZE-1, 0);
+				if(ret < 0){
+					/* 对于非阻塞IO，下面的条件成立表示数据已经全部读取完毕。此后，epoll就能再次触发sockfd上的EPOLLIN事件，以驱动下一次读操作 */
+                	if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+                        printf("read later\n");
+                        break;
+                    }
+                	close(sockfd);
+                	break;
+				}		
+				else if(ret==0){
+					close(sockfd);
+				}
+				else
+				{
+					printf("get %d bytes of content: %s\n", ret, buf);
+				}
+			}
+		}
+        else
+        {
+			printf("something else happened \n");
+        }
+	}
+}
+int main(int argc, char* argv[]){
+	const char* ip = argv[1];
+    int port = atoi(argv[2]);
+    
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero(&address, sizeof(address));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET,ip,&address.sin_addr);
+    address.sin_port = htons(port);
+    
+    int listenfd = socket(PF_INET,SOCK_STREAM,0);
+    assert(listenfd >= 0);
+    
+    ret = bind(listenfd, (struct sockaddr*)&address, sizeof(address));
+    assert(ret!=-1);
+    
+    ret = listen(listenfd,5); 	//内核监听队列的最大长度为5
+    assert(ret!=-1);
+    
+    epoll_event events[MAX_EVENT_NUMBER];
+    int epollfd = epoll_create(5);
+    assert(epollfd != -1);
+    addfd(epollfd, listenfd, true);
+    
+    while(1)
+    {
+		int ret = epoll_wait(epollfd,events,MAX_EVENT_NUMBER,-1);
+    	if(ret<0)
+        {
+        	printf("epoll failure\n");
+        	break;
+        }
+        lt(events, ret, epollfd, listenfd);	/* 使用LT模式 */
+        //et(events, ret, epollfd, listenfd); /* 使用ET模式 */
+    }
+    close(listenfd);
+    return 0;
+}
+
+```
+
+
+
+## EPOLLONESHOT事件
+
+**问题：**
+
+使用ET模式，一个socket上的某个事件还是可能触发多次。
+
+如果一个线程刚刚读完socket数据，然后去处理读取的数据，而socket上又有新的数据（再次触发EPOLLIN事件）,此时另一个新线程处理这些数据，于是**出现了两个线程同时操作一个socke**t的局面。这不是我们所期望的。
+
+EPOLLONESHOT可以解决此问题。当一个线程处理某个socket，其他线程不可以操作该socket。等线程处理完该socket，重置EPOLLONESHOT事件。
+
+**！！！！以下代码没写完**
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <pthread.h>
+
+#define MAX_EVENT_NUMBER 1024
+#define BUFFER_SIZE 1024
+
+struct fds
+{
+	int epollfd;
+    int sockfd;
+};
+int setnonblocking(int fd)
+{
+	int old_option = fcntl(fd, F_GETFL);
+    int new_option = old_option | O_NONBLOCK;
+    fcntl(fd, F_SETFL, new_option);
+    return old_option;
+}
+/* 将文件描述符fd上的EPOLLIN和EPOLLET事件注册到epollfd指示的epoll内核事件表中,参数 oneshot 指定是否注册fd上的EPOLLONESHOT事件 */
+void addfd(int epollfd, int fd, bool oneshot){
+	epoll_event event;
+	event.data.fd = fd;
+	event.events = EPOLLIN;		// EPOLLIN 表示可读事件
+	if(oneshot){
+		event.events |= EPOLLONESHOT;
+	}
+	epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+	setnonblocking(fd);
+}
+
+/* 重置fd上的事件。这样操作之后，尽管fd上的EPOLLONESHOT事件被注册，但是操作系统仍然会触发fd上的EPOLLIN事件，且只触发一次 */
+void reset_oneshot(int epollfd, int fd){
+	epoll_event event;
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event);
+}
+
+/* 工作线程 */
+void* worker(void* arg)
+{
+	int sockfd = ( (fds*)arg )->sockfd;
+    int epollfd = ( (fds*)arg )->epollfd;
+    printf("start new thread to receive data on fd: %d\n", sockfd);
+    char buf[ BUFFER_SIZE ];
+    memset(buf, '\0', BUFFER_SIZE);
+    
+}
+```
+
+## ⭐select,poll,epoll三者区别
+
+select和poll采用**轮询**的方式。每次调用都要扫描整个注册（被监听的）的文件描述符集合。算法事件复杂度O(n)。
+
+epoll_wait采用的是回调的方式。内核检测到就绪的文件描述符会触发回调函数，不需要轮询。算法事件复杂度O(1)。
+
+![image-20230330212114123](./assets/image-20230330212114123.png)
+
+## I/O复用应用--非阻塞的connect
+
+在广域网中，connect函数可能需要比较长的时间返回（等待对端发送ack），所以我们通常需要非阻塞connect。
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define BUFFER_SIZE 1023
+
+/* 将文件描述符设置为非阻塞 */
+int setnonblocking(int fd)
+{
+	int old_option = fcntl(fd, F_GETFL);	// 获取文件描述符 旧的状态标志
+	int new_option = old_option | O_NONBLOCK;	// 设置非阻塞标志
+	fcntl(fd, F_SETFL, new_option);
+	return old_option;	// 返回 旧的状态标志，以便日后恢复该状态标志
+}
+
+/* 超时连接函数，参数分别是服务器IP地址、端口号和超时时间(毫秒)。函数成功时返回已经处于连接状态的socket，失败则返回-1 */
+int unblock_connect(const char* ip, int port, int time)
+{
+	int ret = 0;
+    struct sockaddr_in address;
+    bzero(&address, sizeof(address));
+    inet_pton(AF_INET, ip, &address.sin_addr);
+    address.sin_port = htons(port);
+    
+    int sockfd = 
+}
+
 ```
 
 
