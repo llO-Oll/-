@@ -161,11 +161,24 @@ pi = zero;        //    错误：不能把int变量直接赋值给指针
 
 #### 野指针
 
-野指针就是**指针指向的位置是不可知的**。没有被初始化的指针。
+野指针就是**指针指向的位置是不可知的**。**没有被初始化的指针**。
+
+```cpp
+int *p;	//未初始化，野指针
+```
+
+
 
 #### 悬空指针
 
 指针指向的内存已经被释放了的一种指针。
+
+```cpp
+int *p = nullptr;
+int *p2= new int;
+p = p2;
+delete p2;
+```
 
 
 
@@ -415,6 +428,30 @@ empty()    //判断容器是否为空
 capacity()    //容器的容量
 size()    //返回容器中的个数    capacity()大于等于size()
 ```
+
+### ⭐vector的扩容机制
+
+为了支持快速随机访问，vector是连续存储的。
+
+当添加一个新元素时，如果没有空间容纳新元素，为了保持连续存储，容器必须分配新的内存空间保存已有元素和新元素。
+
+为了避免每次添加元素都需要转移一次空间，当需要扩容时，vector会申请一个比需求更大的内存空间，即预留一部分空间作为备用。
+
+
+当向vector中插入元素时，如果元素有效个数size与空间容量capacity相等时，vector内部会触发扩容机制：
+
+1. 开辟新空间。
+2. 拷贝元素。
+3. 释放旧空间。
+
+**为什么选择1.5倍或者2倍方式扩容，而不是3倍、4倍**
+扩容原理为：申请新空间，拷贝元素，释放旧空间，理想的分配方案是**在第N次扩容时能复用之前N-1次释放的空间**。
+
+> 如果按照2倍方式扩容，第i次扩容空间大小如下：可以看到，每次扩容时，前面释放的空间都不能使用。比如：第4次扩容时，前2次空间已经释放，第3次空间还没有释放(开辟新空间、拷贝元素、释放旧空间)，即前面释放的空间只有1 + 2 = 3，假设第3次空间已经释放才只有1+2+4=7，而第四次需要8个空间，因此无法使用之前已释放的空间，但是按照小于2倍方式扩容，多次扩容之后就可以复用之前释放的空间了。如果倍数超过2倍(包含2倍)方式扩容会存在：空间浪费可能会比较高，比如：扩容后申请了64个空间，但只存了33个元素，有接近一半的空间没有使用。
+
+**采用成倍方式扩容，可以保证常数的时间复杂度。但是2倍扩容的问题在于，每次扩展的新尺寸必然刚好大于之前分配的总和，也就是说，之前分配的内存空间不可能被使用。这样对内存不友好，最好把增长因子设为(1, 2)，也就是1-2之间的某个数值。**
+
+[(79条消息) c++：vector的push_back时间复杂度分析_live4m的博客-CSDN博客](https://blog.csdn.net/weixin_44178736/article/details/113831401)
 
 ### vector的插入和删除
 
@@ -1802,6 +1839,8 @@ public:
 
 ## 对象移动
 
+[一文读懂C++右值引用和std::move - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/335994370)
+
 ### 左值和右值
 
 1) 可位于赋值号（=）左侧的表达式就是左值；反之，只能位于赋值号右侧的表达式就是右值。
@@ -1830,9 +1869,86 @@ int &&rr = i;      // 错误：不能将一个右值引用绑定到左值上，i
 
 ### std::move()
 
-一句话概括std::move ———— std::move是**将对象的状态或者所有权从一个对象转移到另一个对象**，只是转移，没有内存的搬迁或者内存拷贝。
+**右值引用有办法指向左值吗？**
 
-![](https://img-blog.csdnimg.cn/2021030222151279.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3MxMXNob3dfMTYz,size_16,color_FFFFFF,t_70)
+有办法，`std::move`：
+
+```cpp
+int a = 5; // a是个左值
+int &ref_a_left = a; // 左值引用指向左值
+int &&ref_a_right = std::move(a); // 通过std::move将左值转化为右值，可以被右值引用指向
+ 
+cout << a; // 打印结果：5
+```
+
+在上边的代码里，看上去是左值a通过std::move移动到了右值ref_a_right中，那是不是a里边就没有值了？并不是，打印出a的值仍然是5。
+
+`std::move`是一个非常有迷惑性的函数，不理解左右值概念的人们往往以为它能把一个变量里的内容移动到另一个变量，**但事实上std::move移动不了什么，唯一的功能是把左值强制转化为右值**，让右值引用可以指向左值。其实现等同于一个类型转换：`static_cast<T&&>(lvalue)`。 
+
+同样的，右值引用能指向右值，本质上也是把右值提升为一个左值，并定义一个右值引用通过std::move指向该左值：
+
+```cpp
+int &&ref_a = 5;
+ref_a = 6; 
+ 
+等同于以下代码：
+ 
+int temp = 5;
+int &&ref_a = std::move(temp);
+ref_a = 6;
+```
+
+#### std::move()的作用：实现移动语义
+
+在实际场景中，右值引用和std::move被广泛用于在STL和自定义类中**实现移动语义，避免拷贝，从而提升程序性能**。
+
+```cpp
+class Array{
+public:
+    Array(int size): size_(size){
+		data = new int[size_];
+    }
+    
+    // 深拷贝构造
+    Array(const Array& temp_array){
+        size_ = temp_array.size_;
+        data_ = new int[size_];
+        for(int i=0;i<size_;i++){
+			data_[i] = temp_array.data_[i];
+        }
+    }
+    
+    // 深拷贝赋值
+    Array& operator=(const Array& temp_array){
+		delete[] data_;
+        
+        size_ = temp_array.size_;
+        data_ = new int[size_];
+        for(int i = 0;i<size_;i++){
+			data_[i] = temp_array.data_[i];
+        }
+    }
+    
+	// 移动构造函数
+    Array(Array&& temp_array) {
+        data_ = temp_array.data_;
+        size_ = temp_array.size_;
+        // 为防止temp_array析构时delete data，提前置空其data_      
+        temp_array.data_ = nullptr;
+    }
+    
+    ~Array(){
+		delete[] data_;
+    }
+    
+    int *data_;
+    int size_;
+}
+```
+
+
+
+引入右值引用，就是为了移动语义。移动语义就是为了减少拷贝。std::move就是将左值转为右值引用。这样就可以重载到移动构造函数了，不用深拷贝了，提高性能。**std::move本身只做类型转换，对性能无影响。**
 
 ## 深拷贝、浅拷贝
 
