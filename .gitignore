@@ -14,5 +14,7 @@ code_note/CPP/helloworld.cpp.exe
 *.json
 *.json
 code_note/CPP/tempCodeRunnerFile.cpp
+code_note/CPP/*.cpp
+*.cpp
 *.cpp
 *.cpp
