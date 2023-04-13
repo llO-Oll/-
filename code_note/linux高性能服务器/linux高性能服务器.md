@@ -755,6 +755,8 @@ int setnonblocking(int fd)
 
 I/O复用 使得程序能够**监控多个文件表述符**。
 
+**同时处理多个描述符IO事件的一种技术手段**
+
 下列情况需要使用I/O复用技术：
 
 1. 客户端同时处理多个socket。比如非阻塞的connect技术
@@ -1006,7 +1008,7 @@ EPOLLOUT： 表示对应的文件描述符可以写；
 EPOLLPRI： 表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）；
 EPOLLERR： 表示对应的文件描述符发生错误；
 EPOLLHUP： 表示对应的文件描述符被挂断；
-EPOLLET： 将 EPOLL设为边缘触发(Edge Triggered)模式（默认为水平触发），这是相对于水平触发(Level Triggered)来说的。
+EPOLLET： 将EPOLL设为边缘触发(Edge Triggered)模式（默认为水平触发），这是相对于水平触发(Level Triggered)来说的。
 EPOLLONESHOT： 只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里
 ```
 
@@ -1326,7 +1328,7 @@ int main(int argc, char* argv[]){
 	int port = atoi(argv[2]);	//atoi: string->int
     
     struct sockaddr_in server_address;
-    bzero(&server_address.sizeof(server_address));
+    bzero(&server_address, sizeof(server_address));
     server_address.sin_family = AF_INET;
     inet_pton(AF_INET,ip,&server_address.sin_addr);
     server_address.sin_port = htons(port);
@@ -1339,7 +1341,8 @@ int main(int argc, char* argv[]){
         close(sockfd);
         return 1;
 	}
-    pollfd fds[2];
+    
+	struct pollfd fds[2];
     /*	注册文件描述符0（标准输入） 和文件描述符sockfd上的可读事件	
     	struct pollfd{
             int fd;	//文件描述符
@@ -1385,7 +1388,7 @@ int main(int argc, char* argv[]){
         {
 			memset(read_buf,'\0',BUFFER_SIZE);//清空read_buf,'\0'为空字符
             recv(fds[1].fd,read_buf,BUFFER_SIZE-1,0);
-            printg("%s\n",read_buf);
+            printf("%s\n",read_buf);
         }
         if(fds[0].revents & POLLIN)
         {
@@ -1395,7 +1398,7 @@ int main(int argc, char* argv[]){
 			往pipedfd[1]写入的数据，可以从pipedfd[0]读出。且pipedfd[0]只能从管道读数据，pipedfd[1]只能用于往管道写入数据。
 			*/
             
-            ret = splice(0,NULL,pipedfd[1],NULL,32768,SPLICE_F_MORE | SPLICE_F_MOVE);
+            ret = splice(0,NULL,pipefd[1],NULL,32768,SPLICE_F_MORE | SPLICE_F_MOVE);
             ret = splice(pipefd[0],NULL,sockfd,NULL,32768,SPLICE_F_MORE | SPLICE_F_MOVE);
         }
     }
@@ -1408,7 +1411,7 @@ int main(int argc, char* argv[]){
 
 服务器程序使用poll同时管理 监听socket和连接socket，并且使用牺牲空间换取时间的策略来提高服务器性能。
 
-```c
+```cpp
 #define _GNU_SOURCE 1
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -1430,7 +1433,7 @@ int main(int argc, char* argv[]){
 /* 客户数据：客户端socket地址、待写到客户端的数据、从客户端读入的数据	*/
 struct client_data
 {
-	sockaddr_in address;
+    struct sockaddr_in address;
     char* write_buf;
     char buf[BUFFER_SIZE];
 };
@@ -1449,12 +1452,12 @@ int main(int argc, char* argv[]){
     }
     const char* ip = argv[1];
 	int port = atoi(argv[2]);	//atoi: string->int
-    
-    struct sockaddr_in server_address;
-    bzero(&server_address.sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    inet_pton(AF_INET,ip,&server_address.sin_addr);
-    server_address.sin_port = htons(port);
+    int ret=0;
+    struct sockaddr_in address;
+    bzero(&address,sizeof(address));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET,ip,&address.sin_addr);
+    address.sin_port = htons(port);
     
     int listenfd = socket(PF_INET,SOCK_STREAM,0);
     assert(listenfd >= 0);
@@ -1466,8 +1469,8 @@ int main(int argc, char* argv[]){
     assert(ret != -1);
     
     /* 创建users数组*/
-    client_data* users = new client_data[FD_LIMIT];
-    pollfd fds[USER_LIMIT+1];
+    struct client_data* users = new client_data[FD_LIMIT];
+    struct pollfd fds[USER_LIMIT+1];
     int user_counter = 0;
     for(int i=1; i<USER_LIMIT;++i){
     	fds[i].fd = -1;
@@ -1518,7 +1521,7 @@ int main(int argc, char* argv[]){
                 memset(errors,'\0',100);
                 socklen_t length = sizeof(errors);
                 
-                if(getsockopt(fd[i].fd,SOL_SOCKET, SO_ERROR,&errors, &length)<0){
+                if(getsockopt(fds[i].fd,SOL_SOCKET, SO_ERROR,&errors, &length)<0){
         			printf("get socket option failed\n");
                 }
                 continue;
@@ -1575,8 +1578,8 @@ int main(int argc, char* argv[]){
                 ret = send(connfd, users[connfd].write_buf,strlen(users[connfd].write_buf),0);
                 users[connfd].write_buf = NULL;
                 /*	写完后重新注册fds的可读事件	*/
-                fds[j].events |= ~POLLOUT;
-                fds[j].events |= POLLIN;
+                fds[i].events |= ~POLLOUT;
+                fds[i].events |= POLLIN;
             }
         }
 	}
@@ -1586,7 +1589,281 @@ int main(int argc, char* argv[]){
 }
 ```
 
+`client.c`接收两个参数：IP地址、端口号。
 
+`server.cpp`接收两个参数：IP地址、端口号。
+
+`gcc client.c -o client`生成可执行程序`client`
+
+`g++ server.cpp -o server`生成可执行程序`server`
+
+建立多人聊天室
+
+首先一定先运行server用于建立监听socket
+
+`./server 本地ip 12345`
+
+`./client 本地ip 12345`	第一个用户进入聊天室
+
+`./client 本地ip 12345`	第二个用户进入聊天室
+
+……
+
+`./client 本地ip 12345`	第二个用户进入聊天室
+
+## I/O复用应用--同时处理TCP和UDP服务
+
+> 以下代码未验证是否可执行
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <pthread.h>
+
+#define MAX_EVENT_NUMBER 1024
+#define TCP_BUFFER_SIZE 512 
+#define UDP_BUFFER_SIZE 1024
+
+int setnonblocking(int fd)
+{
+	int old_option = fcntl(fd, F_GETFL);
+	int	new_option = old_option | O_NONBLOCK;
+	fcntl(fd,F_SETFL,new_option);
+	return old_option;
+}
+/* 将文件描述符fd上的EPOLLIN(可读事件)注册到epollfd指示的epoll内核事件表中,启用ET模式 */
+void addfd(int epollfd, int fd)
+{
+	epoll_event event;
+	event.data.fd = fd;
+	event.events = EPOLLIN | EPOLLET;
+	epoll_ctl(epollfd,EPOLL_CTL_ADD,fd,&event);
+	setnonblocking(fd);
+}
+
+int main(int argc, char* argv[])
+{
+	if(argc < =2){
+    	printf("usage: %s ip_address port_number\n",basename(argv[0]));
+		return 1;
+    }
+    const char* ip = argv[1];
+    int port = atoi(argv[2]);
+    
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero(&address, sizeof(address));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET,ip,&address.sin_addr);
+    address.sin_port = htons(port);
+    /*	创建TCP socket,并将其绑定到端口port上	*/
+    int listenfd = socket(PF_INET,SOCK_STREAM,0);
+    assert(listenfd >= 0);
+    
+    ret = bind(listenfd, (struct sockaddr*)&address, sizeof(address) );
+    assert(ret != -1);
+    
+    ret = listen(listenfd, 5);
+    assert(ret != -1);
+    
+    /*	创建UDP socket,并将其绑定到端口port上	*/
+    bzero(&address, sizeof(address));
+    address.sin_family = AF_INET;
+    inet_pton(AF_INET,ip,&address.sin_addr);
+    address.sin_port = htons(port);
+    int udpfd = socket(PF_INET,SOCK_DGRAM,0);
+    assert(udpfd >= 0);
+    
+    ret = bind(udpfd, (struct sockaddr*)&address, sizeof(address));
+    assert(ret != -1);
+    
+    epoll_event events[MAX_EVENT_NUMBER];
+    int epollfd = epoll_create(5);
+    assert(epollfd != -1);
+	/*	注册TCP socket 和 UDP socket 上的可读事件	*/
+    addfd(epollfd, listenfd);
+    addfd(epollfd, udpfd);
+    
+    while(1)
+    {
+		int number = epoll_wait( epollfd, events, MAX_EVENT_NUMBER, -1);
+        if(number < 0)
+        {
+        	printf("epoll failure\n");
+        	break;
+        }
+        for(int i=0; i<number; i++){
+        	int sockfd = events[i].data.fd;
+        	if( sockfd == listenfd){
+            	struct sockaddr_in client_address;
+            	socklen_t client_addrlength = sizeof(client_address);
+                int connfd = aceept(listenfd, (struct sockaddr*)&client_address, &client_addrlength);
+                addfd(epollfd,connfd);
+            }
+            else if(sockfd == udpfd)
+            {
+            	char buf[UDP_BUFFER_SIZE];
+            	memset(buf,'\0',UDP_BUFFER_SIZE);
+                struct sockaddr_in client_address;
+                socklen_t client_addrlength = sizeof(client_address);
+                
+                ret = recvfrom(udpfd, buf, UDP_BUFFER_SIZE-1,0,(struct sockaddr*)&client_address, &client_addrlength);
+                if( ret>0 ){
+					sendto(udpfd, buf, UDP_BUFFER_SIZE-1,0,(struct sockaddr* )&client_address, client_addrlength);
+                }
+            }
+            else if(events[i].events & EPOLLIN)
+            {
+            	char buf[TCP_BUFFER_SIZE];
+            	memset(buf,'\0',UDP_BUFFER_SIZE);
+                struct sockaddr_in client_address;
+                socklen_t client_addrlength = sizeof(client_address);
+                
+                ret = recvfrom(udpfd, buf, UDP_BUFFER_SIZE-1, 0, (struct sockaddr*)&client_address, &client_addrlength);
+                
+                if(ret > 0)
+                {
+					sendto(udpfd, buf, UDP_BUFFER_SIZE-1, 0,(struct sockaddr*)&client_address, client_addrlength);
+                }
+            }else if(events[i].events & EPOLLIN)
+            {
+            	char buf[TCP_BUFFER_SIZE];
+            	while(1)
+                {
+                	memset(buf, '\0', TCP_BUFFER_SIZE);
+                	ret = recv(sockfd, buf, TCP_BUFFER_SIZE-1,0);
+                	if(ret < 0){
+                    	if((errno == EAGAIN) || (error == EWOULDBLOCK))
+                        {
+                        	break;
+                        }
+                        close(sockfd);
+                        break;
+                    }
+                    else if(ret == 0)
+                    {
+						close(sockfd);
+                    }
+                    else
+                    {
+						send(sockfd,buf,ret,0);
+                    }
+                }
+            }
+            else
+            {
+				printf("something else happened \n");
+            } 
+        }
+    }
+    close(listenfd);
+	return 0;
+}
+```
+
+
+
+# 信号
+
+信号是由用户、系统或者进程发送给目标进程的信息，已通知目标进程某个状态的改变或系统异常。
+
+- 对于前台进程，用户可以通过输入特殊的终端字符来给它发送信号。比如输入Ctrl+C通常会给进程发送一个中断信号。
+- 系统异常。比如浮点异常和非法内存段访问。
+- 系统状态变化。比如 alarm定时器到期将引起SIGALRM信号。
+- 运行kill命令或调用kill函数。
+
+# 多进程
+
+## fork创建新进程
+
+```c
+#include <sys/types.h>
+#include <unistd.h>
+pid_t fork(void);
+```
+
+该函数每次返回两次，在父进程中返回的是子进程的**PID(Process ID，表示进程号)**，在子进程中则返回0；
+
+**PPID**是父进程的PID
+
+## exec系列系统调用
+
+## 处理僵尸进程
+
+父进程结束，而子进程还没结束，此时子进程就是僵尸进程。**子进程的PPID会被设置为1，即init进程。init进程接管僵尸进程，并等待它结束。**
+
+```c
+#include <sys/types.h>
+#include <sys/wait.h>
+/*
+	将阻塞进程，直到该进程的某个子进程结束运行为止。
+*/
+pid_t wait(int* stat_loc);
+
+/*
+	将阻塞进程，直到该进程指定的pid子进程结束运行为止。pid = -1时和wait相同
+*/
+pid_t waitpid( pid_t pid, int* stat_loc, int options);
+```
+
+## 信号量
+
+**引发进程之间的竞争的代码段称为**关键代码段，或者**临界区**
+
+P:传递，进入临界区
+
+V:释放，退出临界区
+
+![image-20230412150032114](./assets/image-20230412150032114.png)
+
+### semget系统调用
+
+创建一个新的信号量集，或者获取一个已经存在的信号量集。
+
+```c
+#include <sys/sem.h>
+int semget(key_t key, int num_sems, int sem_flags);
+```
+
+
+
+## 共享内存
+
+```c
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+/*
+创建/打开POSIX共享内存对象
+@param	name:创建/打开的共享内存对象
+@param	oflag:创建方式。
+@param	
+*/
+int shm_open(const char* name, int oflag, mode_t mode);
+
+/*
+关闭POSIX共享内存对象
+*/
+int shm_unlink(const char* name);
+```
+
+编译时需要指定链接选项`-lrt`
+
+## 聊天服务器 (多进程+共享内存版)
+
+一个子进程处理一个客户连接。同时将所有客户socket连接的读缓冲设计为一块共享内存。
+
+#
 
 # 线程池
 
