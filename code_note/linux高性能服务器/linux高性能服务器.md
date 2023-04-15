@@ -328,7 +328,14 @@ OOB有时也称为加速数据(expedited data)，
 ```c
 #include <sys/types.h>
 #include <sys/socket.h>
+/*
+@return		-1 失败
+        	0	对方关闭了通信
+        	>0	成功读取数据
+*/
 ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+
+
 ssize_t send(int sockfd, const void *buf, size_t len, int flags);
 ```
 
@@ -1782,6 +1789,81 @@ int main(int argc, char* argv[])
 - 系统状态变化。比如 alarm定时器到期将引起SIGALRM信号。
 - 运行kill命令或调用kill函数。
 
+## Linux信号
+
+### 发送信号
+
+```c
+#include <sys/types.h>
+#include <signal.h>
+/*
+把信号 sig 发送给目标进程 pid
+*/
+int kill(pid_t pid, int sig);
+```
+
+![image-20230414144201600](./assets/image-20230414144201600.png)
+
+
+
+## 信号函数
+
+```c
+#include <signal.h>
+_sighandler_t signal(int sig, _sighandler_t _handler)
+    
+
+/*
+相较于 signal 更好的信号处理函数
+@param	sig: 要捕获的信号类型
+@param	act: 指定新的信号处理方式
+@param	oact: 输出信号先前的处理方式
+@return 0: 成功 
+        -1: 失败
+*/
+int sigaction(int sig, const struct sigaction* act, struct sigaction* oact);
+
+/*
+
+
+struct sigaction
+{
+#ifdef __USE_POSIX199309
+	union
+	{
+		_sighandler_t sa_handler;
+		void (*sa_sigaction) (int, siginfo_t*, void* );
+	}
+	_sigaction_handler;
+# define sa_handler __sigaction_handler.sa_handler	\\	sa_handler 信号处理函数
+# define sa_sigaction __sigaction_handler.sa_sigaction	
+#else
+	_sighandler_t sa_handler;
+#endif
+	_sigset_t sa_mask;		\\	sa_mask 设置进程的信号掩码，指定哪些信号不能发送给本进程
+	int sa_flags;
+	void (*sa_restorer)	(void);	
+};
+*/
+
+```
+
+
+
+## 信号集
+
+```c
+#include <signal.h>
+//	sigset_t 表示一组信号
+int sigemptyset (sigset_t* _set)	//	清空信号集
+int	sigfillset(sigset_t* _set)	//	在信号集中设置所有信号
+int	sigaddset(sigset_t* _set,int _signo)	//	将信号_signo添加至信号集中
+int sigdelset(sigset_t*	_set,int _signo)	//	将信号_signo从信号集中删除
+int sigismember(_const sigset_t* _set, int _signo)	//	测试_signo是否在信号集中
+```
+
+
+
 # 多进程
 
 ## fork创建新进程
@@ -1863,7 +1945,190 @@ int shm_unlink(const char* name);
 
 一个子进程处理一个客户连接。同时将所有客户socket连接的读缓冲设计为一块共享内存。
 
-#
+```c
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define USER_LIMIT 5
+#define BUFFER_SIZE 1024
+#define FD_LIMIT 65535
+#define MAX_EVENT_NUMBER 1024
+#define PROCESS_LIMIT 65536
+
+/*	处理一个客户连接必要的数据	*/
+struct client_data
+{
+	sockaddr_in address;	//	客户端的socket地址
+	int connfd;				//	socket 文件描述符
+    pid_t pid;				//	处理这个连接的子进程的pid
+    int pipefd[2];			//	和父进程通信的管道
+};
+
+static const char* sha_name = "/my_shm";
+int sig_pipefd[2];
+int epollfd;
+int listenfd;
+int shmfd;
+char* share_mem = 0;
+
+/*	客户连接数组。进程用客户连接的编号来索引这个数组，即可取得相关的客户连接数据	*/
+client_data* users = 0;
+/*	子进程和客户连接的映射关系表。用进程的PID来索引这个数组，即可取得该进程所处理的客户连接的编号	*/
+int* sub_process = 0;
+/*	当前客户数量	*/
+int user_count = 0;
+bool stop_child = false;
+
+int setnonblocking(int fd)
+{
+	int old_option = fcntl(fd, F_GETFL);
+	int	new_option = old_option | O_NONBLOCK;
+    fcntl(fd,F_SETFL,new_option);
+    return old_option;
+}
+
+void addfd(int epollfd, int fd)
+{
+	epoll_event event;
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLET;
+    epoll_ctl(epollfd,EPOLL_CTL_ADD,fd,&event);
+    setnonblocking(fd);
+}
+
+void addsig(int sig, void(*handler)(int), bool restart = true)
+{
+	struct sigaction sa;
+    memset(&sa, '\0',sizeof(sa));
+    sa.sa_handler = handler;
+    if(restart)
+    {
+		sa.sa_flags |= SA_RESTART;
+    }
+    sigfillset( &sa.sa_mask);
+    assert(sogaction(sig,&sa,NULL) != -1);
+}
+
+void del_resource()
+{
+	close(sig_pipefd[0]);
+    close(sig_pipefd[1]);
+    close(listenfd);
+    close(epollfd);
+    shm_unlink(shm_name);
+    delete [] users;
+    delete [] sub_process;
+}
+
+void child_term_handler(int sig)
+{
+	stop_child = true;
+}
+/*	子进程运行的函数。参数idx指出该子进程处理的客户连接的编号，users是保存所有客户连接数据的数组，users是保存所有客户连接数据的数组，参数share_mem指出共享内存的起始地址	*/
+int run_child(int idx, client_data* users, char* share_mem)
+{
+	epoll_event events[MAX_EVENT_NUMBER];
+    /*	子进程使用I/O复用技术同时监听两个文件描述符：客户连接socket、与父进程通信的管道文件描述符	*/
+    assert(child_epollfd != -1);
+    int connfd = users[idx].connfd;
+    addfd(child_epollfd,connfd);
+    int pipefd = users[idx].pipefd[1];
+    addfd(child_epollfd, pipefd);
+    int ret;
+    /*	子进程需要设置自己的信号处理函数	*/
+    addsig(SIGTERM, child_term_handler, false);
+    
+    while(!stop_child)
+    {
+		int number = epoll_wait(child_epollfd, events, MAX_EVENT_NUMBER, -1);
+        if((number < 0) && (errno != EINTR))
+        {
+			printf("epoll failure\n");
+            break;
+        }
+        for(int i=0; i<number;i++){
+			int sockfd = events[i].data.fd;
+            /*	本子进程负责的客户连接有数据到达	*/
+            if((sockfd == connfd ) && (events[i].events & EPOLLIN))
+            {
+            	memset(share_mem + idx*BUFFER_SIZE,'\0',BUFFER_SIZE);
+            	/*	将客户数据读取到对应的读缓存中。读缓存是共享内存的一段，他开始于idx*BUFFER_SIZE处，长度为BUFFER_SIZE字节。因此，各个客户连接的读缓存是共享的	*/
+             	ret = recv(connfd, share_mem + idx*BUFFER_SIZE, BUFFER_SIZE-1, 0);
+            	if(ret < 0)
+                {
+                    /*	EAGAIN 表示没有数据可读,请稍后再试 */
+					if(errno != EAGAIN)
+                    {
+						stop_child = true;
+                    }
+                }
+                /*	recv 返回0 表示对方关闭了通信 */
+                else if( ret == 0){
+					stop_child = true;
+                }
+                else
+                {
+                    /*	成功读取客户数据后 (通过管道)通知主进程来处理	*/
+					send(pipefd,(char* )&idx, sizeof(idx),0);
+                }
+            }
+            /*	主进程通知本进程（通过管道）将第client个客户的数据发送到本进程负责的客户端	*/
+            else if((sockfd == pipefd) && (events[i].events & EPOLLIN))
+            {
+				int client = 0;
+                 /*	接收主进程发送来的数据，即有客户数据到达的连接的编号	*/
+				ret = recv(sockfd, (char*)&client, sizeof(client),0);	//	&client 是client的地址， (char*)将地址存储的值转为 char类型
+                
+                if(ret < 0){
+                	if(errno != EAGAIN)
+                    {
+                    	stop_child = true;
+                    }
+                }else if(ret == 0)
+                {
+                	stop_child = true;    
+            	}
+                else
+                {
+                	send(connfd, share_mem + client * BUFFER_SIZE, BUFFER_SIZE, 0);    
+            	}
+            }
+            else{
+				continue;
+            }
+        }
+    }
+    close(connfd);
+    close(pipefd);
+    close(child_epollfd);
+    return 0;
+}
+
+
+int main(int argc, char* argv[])
+{
+	if(argc <= 2){
+		printf(" ")	
+    }
+}
+```
+
+
+
+
 
 # 线程池
 
