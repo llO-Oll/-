@@ -7,7 +7,7 @@ class ADT{
 	}
 	int i;
 	static int j;
-	 
+	 1
 public:
 	ADT(){
 		this->i = 10;
