@@ -7,7 +7,6 @@ class ADT{
 	}
 	int i;
 	static int j;
-	 1
 public:
 	ADT(){
 		this->i = 10;
@@ -35,6 +34,7 @@ int main()
 	delete[] p;
 	return 0;
 }
+
 //输出结果：
 //ADT construct i=10j=100
 //ADT destruct

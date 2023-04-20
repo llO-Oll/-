@@ -14,7 +14,6 @@ public:
     int find(int x){
         return fa[x] = fa[x]==x?x:find(fa[x]);
     }
-
     void merge(int i,int j){
         int x = find(i),y=find(j);
         if(rank[x]<=rank[y]){
@@ -60,4 +59,5 @@ int main(){
     Solution s;
     std::vector<int> res(s.findRedundantConnection(edges));
     std::cout<< res[0]<<res[1];
+    int x;
 }
