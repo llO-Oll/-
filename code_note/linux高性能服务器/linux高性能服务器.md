@@ -782,7 +782,7 @@ I/O复用 使得程序能够**监控多个文件表述符**。
 /*
 args:
 	nfds: 指定被监听的文件描述符总数。描述符从0开始，nfds通常是最大描述符+1
-	readfds、writefds、exceptfds: 可读、可写、异常文件描述符
+	readfds、writefds、exceptfds: 用户要监听的可读、可写、异常文件描述符
 	timeout: 设置select函数超时时间
 return:
 	成功 返回 就绪的可读可写异常的文件描述符总数
@@ -791,7 +791,11 @@ return:
 int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
           struct timeval* timeout);
 
+/*fd_set结构体仅包含一个整形数组，该数组的每个元素的每一位(bit)标记一个文件描述符。fd_set能容纳的文件描述符数量由FD_SETSIZE指定。这就限制了select的最大连接数。
+
 ```
+
+
 
 
 
@@ -2345,6 +2349,106 @@ int main(int argc, char* argv[])
 
 
 
+## 消息队列
+
+消息队列 **在两个进程之间传递二进制数据块**。每个数据块都有一个特定的类型，接收方可以根据类型来有选择地接收数据，而不一定像管道和命名管道那样必须以先进先出的方式接收数据。
+
+```c
+#include <sys/msg.h>
+
+/*	
+创建一个消息队列/获取一个已有的消息队列。
+@param key: 标识一个全局唯一的消息队列。
+@param msgflg: 与semget的参数sem_flags一致
+@return: 成功时返回一个正整数值(消息队列标识符)，失败返回-1
+*/
+int msgget(key_t key, int msgflg );
+
+/*	
+把一条消息添加到消息队列中。
+*/
+int msgsnd(int msqid, const void* msg_ptr, size_t msg_sz, int msgflg);
+
+
+```
+
+## ⭐Linux下进程间通信方式(IPC)
+
+### 1.管道
+
+无名管道:半双工，只能在具有亲缘关系的进程之间使用（如父子进程）
+
+有名管道：半双工，允许没有亲缘关系的进程之间通信。
+
+### 2.共享内存
+
+映射一段能被其他进程所访问的内存，这段内存由一个进程创建，但多个进程都可以访问。
+
+共享内存是最快的IPC方式。经常与**信号量**配合使用实现进程间的同步和通信。
+
+### 3.消息队列
+
+消息队列是有消息的链表，存放在内核中并由消息队列标识符标识。消息队列克服了信号传递信息少、管道只能承载无格式字节流以及缓冲区大小受限等缺点。
+
+### 4.套接字
+
+可以在不同机器间通信，也能在本地的两个进程间通信。
+
+### 5.信号
+
+用于通知 接收进程 某个事件已经发生，比如按下`ctrl+c`就是信号。
+
+### 6.信号量
+
+信号量是一个计数器，可以用来控制多个进程对共享资源的访问。他常作为一种锁机制，实现**进程、线程的对临界区的同步及互斥访问**。
+
+
+
+# 多线程
+
+POSIX线程(`pthread`)
+
+## 线程模型
+
+线程分为两种：内核线程	用户线程
+
+线程实现的方式：
+
+1. 完全在用户空间实现：无需内核支持。**线程库**负责管理所有执行线程，比如优先级、时间片等。M个用户线程对应1个内核线程.
+2. 完全由内核调度：M:N=1:1,一个用户线程被映射为一个内核线程。
+3. 双层调度：内核调度M个内核线程，线程库调度N个用户线程。
+
+
+
+## 线程库
+
+
+
+## 创建线程 和 结束线程
+
+```c
+#include <pthread.h>
+/*	
+创建一个线程
+@param thread: 线程标识符
+@param 
+*/
+int pthread_create(pthread_t* thread, const pthread_attr_t* attr,
+                  void* ( *start_routine)(void* ), void* arg );
+
+
+
+
+```
+
+
+
+## 信号量
+
+## 互斥锁
+
+二进制的信号量
+
 
 
 # 线程池
@@ -2359,6 +2463,6 @@ int main(int argc, char* argv[])
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
-#include
+#include 
 ```
 
