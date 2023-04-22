@@ -2441,13 +2441,222 @@ int pthread_create(pthread_t* thread, const pthread_attr_t* attr,
 
 ```
 
+## 线程同步机制
+
+### 1.信号量
+
+### 2.互斥锁
+
+二进制的信号量。当进人关键代码段时，我们需要获得互斥锁并将其加锁,这等价于二进制信号量的Р操作﹔当离开关键代码段时，我们需要对互斥锁解锁，以唤醒其他等待该互斥锁的线程，这等价于二进制信号量的V操作。
+
+```c
+#include <pthread.h>
+
+/*
+初始化互斥锁
+@param mutex: 互斥锁
+@param mutexattr: 指定互斥锁的属性
+@return: 成功返回0，失败返回错误码。下面的函数也相同。
+*/
+int pthread_mutex_init(pthread_mutex_t* mutex, const pthread_mutexattr_t* mutexattr );
+
+/*
+销毁互斥锁
+*/
+int pthread_mutex_destroy(pthread_mutex_t* mutex);
+
+/*
+给互斥锁加锁，如果mutex已经上锁，则pthread_mutex_lock调用将被阻塞，直到该互斥锁的占有者将其解锁。
+*/
+int pthread_mutex_lock(pthread_mutex_t* mutex);
+
+/*
+给互斥锁加锁，如果mutex已经上锁，则pthread_mutex_trylock调用将立即返回错误码。
+*/
+int pthread_mutex_trylock(pthread_mutex_t* mutex);
+
+/*
+解锁
+*/
+int pthread_mutex_unlock(pthread_mutex_t* mutex);
+```
+
+互斥锁属性
+
+```c
+#include <pthread.h>
+/*	初始化互斥锁属性对象	*/
+int pthread_mutexattr_init( pthread_mutexattr_t* attr );
+
+/*	销毁互斥锁属性对象	*/
+int pthread_mutexattr_destroy( pthread_mutexattr_t* attr );
+
+/*	
+获取互斥锁的pshared属性               
+*/
+int pthread_mutexattr_getpshared( const pthread_mutexattr_t* attr, int* pshared );
+
+/*	
+设置互斥锁的pshared属性
+@param pshared: 
+				PTHREAD_PROCESS_SHARED	互斥锁可以被跨进程共享。
+				PTHREAD_PROCESS_PRIVATE	互斥锁只能被和锁的初始化线程隶属于同一个进程的线程共享。              
+*/
+int pthread_mutexattr_setpshared( pthread_mutexattr_t* attr, int pshared );
+
+/*	获取互斥锁的type属性	*/
+int pthread_mutexattr_gettype( const pthread_mutexattr_t* attr, int* type);
+
+/*	
+设置互斥锁的type属性
+@param type: 
+			PTHREAD_MUTEX_NORMAL	普通锁
+			PTHREAD_MUTEX_ERRORCHECK 检错锁
+			PTHREAD_MUTEX_RECURSIVE	嵌套锁
+			PTHREAD_MUTEX_DEFAULT	默认锁
+*/
+int pthread_mutexattr_settype( pthread_mutexattr_t* attr, int type);
+```
+
+### 3.条件变量
+
+如果互斥锁用于同步线程对共享数据的访问。条件变量用于在线程之间同步共享数据的值。
+
+**条件变量提供了一种线程间的通信机制：当某个共享数据达到某个值的时候，唤醒等待这个共享数据的线程。**
 
 
-## 信号量
 
-## 互斥锁
+三种线程同步机制的包装类`locker.h`
 
-二进制的信号量
+```c++
+#ifndef LOCKER_H
+#define LOCKER_H
+
+#include <exception>
+#include <pthread.h>
+#include <semaphore.h>
+
+/*	封装信号量的累	*/
+class sem
+{
+public:
+    /*	创建并初始化信号量	*/
+    sem()
+    {
+        if(sem_init( &m_sem, 0, 0) != 0 )
+        {
+            /*	构造函数没有返回值，可以通过抛出异常来报告错误	*/
+            throw std::exception();
+        }
+    }
+    /*	销毁信号量	*/
+    ~sem()
+    {
+        sem_destroy( &m_sem );
+    }
+    /*	等待信号量	*/
+    bool wait()
+    {
+        return sem_wait( &m_sem ) == 0;
+    }
+    /*	增加信号量	*/
+    bool post()
+    {
+        return sem_post( &m_sem ) == 0;
+    }
+private:
+    sem_t m_sem;
+};
+
+/*	封装互斥锁的类	*/
+class locker
+{
+pubilc:
+    /*	创建并初始化互斥锁	*/
+    locker()
+    {
+        if( pthread_mutex_init( &m_mutex, NULL ) != 0 )
+        {
+            throw std::exception();
+        }
+    }
+    /*	销毁互斥锁	*/
+	~locker()
+    {
+		pthread_mutex_destroy( &m_mutex );
+    }
+    /*	获取互斥锁	*/
+	bool lock()
+    {
+        return pthread_mutex_lock( &m_mutex ) == 0;
+    }
+    /*	释放互斥锁	*/
+    bool unlock()
+    {
+        return pthread_mutex_unlock( &m_mutex ) == 0;
+    }
+private:
+    pthread_mutex_t m_mutex;
+    
+};
+
+
+/*	封装条件变量的类	*/
+class cond
+{
+    public:
+    	/*	创建并初始化条件变量	*/
+    	cond()
+        {
+            if( pthread_mutex_init( &m_mutex, NULL ) != 0 )
+            {
+				throw std::exception();
+            }
+            if(pthread_cond_init( &m_cond, NULL ) != 0)
+            {
+                /*	构造函数中一旦出现问题，就应该立即释放已经成功分配了的资源	*/
+                pthread_mutex_destroy( &m_mutex );
+                throw std::exception();
+            }
+        }
+    	/*	销毁条件变量	*/
+    	~cond()
+        {
+            pthread_mutex_destroy( &m_mutex );
+            pthread_cond_destroy( &m_cond );
+        }
+    	/*	等待条件变量	*/
+    	bool wait()
+        {
+            int ret = 0;
+            pthread_mutex_lock( &m_mutex );
+            pthread_mutex_cond_wait( &m_cond, &m_mutex );
+            pthread_mutex_unlock( &m_mutex );
+            return ret == 0;
+        }
+    	/*	唤醒等待条件变量的线程	*/
+    	bool signal()
+        {
+            return pthread_cond_signal( &m_cond ) == 0;
+        }
+private:
+    pthread_mutex_t m_mutex;
+    pthread_cond_t m_cond;
+};
+#endif
+```
+
+
+
+
+
+## 多线程环境
+
+### 1.可重入函数
+
+**如果一个函数能被多个线程同时调用且不发生静态条件，则我们称它是线程安全的，或者说它是可重入函数。**
+
+### 2.线程和进程
 
 
 
