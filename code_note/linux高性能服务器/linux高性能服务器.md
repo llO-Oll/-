@@ -2431,7 +2431,9 @@ POSIX线程(`pthread`)
 /*	
 创建一个线程
 @param thread: 线程标识符
-@param 
+@param attr: 线程属性
+@param start_routine: 新线程将运行的函数
+@param arg: 新线程将运行的函数参数
 */
 int pthread_create(pthread_t* thread, const pthread_attr_t* attr,
                   void* ( *start_routine)(void* ), void* arg );
@@ -2657,6 +2659,161 @@ private:
 **如果一个函数能被多个线程同时调用且不发生静态条件，则我们称它是线程安全的，或者说它是可重入函数。**
 
 ### 2.线程和进程
+
+![image-20230423194511547](./assets/image-20230423194511547.png)
+
+```c
+#include <pthread.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <wait.h>
+
+pthread_mutex_t mutex;
+/*	子线程运行的函数。它首先获得互斥锁mutex，然后暂停5s，在释放该互斥锁	*/
+void* another(void* arg)
+{
+    printf("in child thread, lock the mutex\n");
+    pthread_mutex_lock( &mutex );
+    sleep( 5 );
+    pthread_mutex_unlock( &mutex );
+}
+
+int main()
+{
+    pthread_mutex_init( &mutex, NULL );
+    pthread_t id;
+    pthread_create( &id, NULL, another, NULL);
+    /*	父进程中的主进程暂停1s,以确定在执行fork操作之前，子线程已经开始运行并获得了互斥变量mutex	*/
+    sleep(1);
+    int pid = fork();
+    if(pid < 0)
+    {
+        pthread_join( id, NULL);
+        pthread_mutex_destroy( &mutex );
+        return 1;
+    }else if( pid == 0 )
+    {
+        printf("I am in the child, want to get the lock\n");
+    	/*	子进程从父进程继承了互斥锁mutex的状态，该互斥锁处于锁住的状态，这是由父进程中的子线程执行pthread_mutex_lock引出的，因此，下面这句加锁操作会一直阻塞，尽管从逻辑上来说它是不应该阻塞的	*/
+        pthread_mutex_lock( &mutex );
+        printf("I can not run to here, oop...\n");
+        pthread_mutex_unlock( &mutex );
+        exit(0);
+    }
+    else
+    {
+        wait(NULL);
+    }
+    pthread_join(id, NULL);
+    pthread_mutex_destroy( &mutex );
+    return 0;
+}
+```
+
+![image-20230423201150527](./assets/image-20230423201150527.png)
+
+```c
+#include <pthread.h>
+int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void) );
+
+```
+
+![image-20230423202014529](./assets/image-20230423202014529.png)
+
+```c
+void prepare()
+{
+	pthread_mutex_lock( &mutex );
+}
+void infork()
+{
+    pthread_mutex_unlock( &mutex );
+}
+pthread_atfork( prepare, infork, infork );
+```
+
+### 3.线程和信号
+
+```c
+#include <pthread.h>
+#include <signal.h>
+
+/*
+设置信号掩码。由于进程中的所有线程共享该进程的信号，线程库根据线程掩码决定把信号发送给哪个具体的线程，所以没必要所有子线程都单独设置信号掩码。
+*/
+int pthread_sigmask(int how, const sigset_t* newmask, sigset_t* oldmask);
+```
+
+我们应该定义一个专门的线程来处理所有信号。通过以下两个步骤：
+
+1. 在主线程创建出其他子线程之前就调用`pthread_sigmask`来设置号信号掩码，所有新创建的子线程都将自动继承这个信号掩码。这样做之后，实际上所有线程都不会响应被屏蔽的信号了。
+2. 在某个线程中调用如下函数来等待信号并处理之：
+
+```c
+#include <signal.h>
+/*
+@param set: 需要等待的信号的集合。
+@param sig: 用于存储该函数返回的信号值。
+*/
+int sigwait( const sigset_t* set, int* sig);
+```
+
+用一个线程处理所有信号
+
+```c
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <errno.h>
+
+#define handle_error_en(en, msg) \
+	do { errno = en; perror(msg); exit(EXIT_FAILURE); }while(0)
+
+static void *sig_thread( void *arg )
+{
+    sigset_t *set = (sigset_t *) arg;
+    int s, sig;
+    for( ;; )
+    {
+        /*	第二个步骤，调用 sigwait等待信号	*/
+        s = sigwait( set, &sig );
+        if( s != 0 )
+        	handle_error_en( s, "sigwait" );
+        printf( "Signal handling thread got signal %d\n", sig );
+    }
+}
+int main( int argc, char* argv[] )
+{
+    pthread_t thread;
+    sigset_t set;
+    int s;
+    /*	第一个步骤，在主线程中设置信号掩码	*/
+	sigemptyset( &set );
+    sigaddset( &set, SIGQUIT );
+    sigaddset( &set, SIGUSR1 );
+    s = pthread_sigmask( SIG_BLOCK, &set, NULL );
+    if( s != 0 )
+        handle_error_en( s, "pthread_sigmask" );
+    s = pthread_create( &thread, NULL, &sig_thread, (void *) &set );
+    if( s != 0 )
+        handle_error_en( s, "pthread_create" );
+    pause();
+}
+```
+
+`pthread`提供一种 将信号发送给指定线程 的方法：
+
+```c
+#include <signal.h>
+/*
+@param thread: 目标线程
+@param sig: 待发送信号。sig为0，则不发送信号，但它仍然执行错误检查，即检查目标线程是否存在。
+@return ：成功返回0，失败返回错误码。
+*/
+int pthread_kill(pthread_t thread, int sig)
+```
 
 
 
