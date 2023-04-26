@@ -819,7 +819,124 @@ int main(){
 }
 ```
 
-------
+## 回调函数
+
+函数 F1 调用函数 F2 的时候，函数 F1 通过参数给 函数 F2 传递了另外一个函数 F3 的指针，在函数 F2 执行的过程中，函数F2 调用了函数 F3，这个动作就叫做回调（Callback），而先被当做指针传入、后面又被回调的函数 F3 就是回调函数。
+
+回调函数的作用是**解耦**。
+
+在回调中，主程序把回调函数像参数一样传入库函数。这样一来，只要我们改变传进库函数的参数，就可以实现不同的功能，这样有没有觉得很灵活？并且丝毫不需要修改库函数的实现，这就是解耦。
+
+```c
+#include<stdio.h>
+
+int Callback_1() // Callback Function 1
+{
+    printf("Hello, this is Callback_1 ");
+    return 0;
+}
+
+int Callback_2() // Callback Function 2
+{
+    printf("Hello, this is Callback_2 ");
+    return 0;
+}
+
+int Callback_3() // Callback Function 3
+{
+    printf("Hello, this is Callback_3 ");
+    return 0;
+}
+
+int Handle(int (*Callback)())
+{
+    printf("Entering Handle Function. ");
+    Callback();
+    printf("Leaving Handle Function. ");
+}
+
+int main()
+{
+    printf("Entering Main Function. ");
+    Handle(Callback_1);
+    Handle(Callback_2);
+    Handle(Callback_3);
+    printf("Leaving Main Function. ");
+    return 0;
+}
+/*输出
+Entering Main Function.
+Entering Handle Function.
+Hello, this is Callback_1
+Leaving Handle Function.
+Entering Handle Function.
+Hello, this is Callback_2
+Leaving Handle Function.
+Entering Handle Function.
+Hello, this is Callback_3
+Leaving Handle Function.
+Leaving Main Function.
+```
+
+### 使用带参数的回调函数
+
+并不是直接把`int Handle(int (*Callback)()) `改成 `int Handle(int (*Callback)(int)) `就可以的，而是通过另外增加一个参数来保存回调函数的参数值，像这里 `int Handle(int y, int (*Callback)(int))` 的参数`y`。同理，可以使用多个参数的回调函数。
+
+```cpp
+#include<stdio.h>
+
+int Callback_1(int x) // Callback Function 1
+{
+    printf("Hello, this is Callback_1: x = %d ", x);
+    return 0;
+}
+
+int Callback_2(int x) // Callback Function 2
+{
+    printf("Hello, this is Callback_2: x = %d ", x);
+    return 0;
+}
+
+int Callback_3(int x) // Callback Function 3
+{
+    printf("Hello, this is Callback_3: x = %d ", x);
+    return 0;
+}
+
+int Handle(int y, int (*Callback)(int))
+{
+    printf("Entering Handle Function. ");
+    Callback(y);
+    printf("Leaving Handle Function. ");
+}
+
+int main()
+{
+    int a = 2;
+    int b = 4;
+    int c = 6;
+    printf("Entering Main Function. ");
+    Handle(a, Callback_1);
+    Handle(b, Callback_2);
+    Handle(c, Callback_3);
+    printf("Leaving Main Function. ");
+    return 0;
+}
+/*
+Entering Main Function.
+Entering Handle Function.
+Hello, this is Callback_1: x = 2
+Leaving Handle Function.
+Entering Handle Function.
+Hello, this is Callback_2: x = 4
+Leaving Handle Function.
+Entering Handle Function.
+Hello, this is Callback_3: x = 6
+Leaving Handle Function.
+Leaving Main Function.
+```
+
+
 
 # 类
 

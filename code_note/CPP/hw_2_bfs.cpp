@@ -22,7 +22,7 @@ int main(){
         isleave[b]++;
     }
     cin >> k;
-    vector<bool> block(k,false);
+    vector<bool> block(n,false);
     for(int i = 0; i < k; i ++){
         int t;
         cin >> t;

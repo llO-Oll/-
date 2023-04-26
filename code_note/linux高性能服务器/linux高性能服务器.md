@@ -1,3 +1,5 @@
+# Linux网络编程基础api
+
 ## socket地址API
 
 ### 主机字节序 和 网络字节序
@@ -745,7 +747,7 @@ file control，对文件进行控制
 #include <fcntl.h>
 int fcntl(int fd, int cmd, ……);
 
-/* 将文件描述符设置为非阻塞 */
+/* 将文件描述符设置为非阻塞 , 如果read没成功,就会 立即返回 并 报一个资源暂时不可用的错误.*/
 int setnonblocking(int fd)
 {
 	int old_option = fcntl(fd, F_GETFL);	// 获取文件描述符 旧的状态标志
@@ -755,6 +757,42 @@ int setnonblocking(int fd)
 }
 
 ```
+
+# 高性能服务器程序框架
+
+服务器三个主要模块
+
+- I/O处理单元。
+- 逻辑单元。
+- 存储单元。
+
+## 服务器模型
+
+### 1.C/S模型
+
+![image-20230424160840806](./assets/image-20230424160840806.png)
+
+1. 服务器启动后，首先创建监听`socket()`,并调用`bind()`函数将其绑定到服务器感兴趣的端口上，然后调用`listen`函数等待客户连接。
+2. 服务器稳定运行后，客户端就可以调用`connect`函数向服务器发起连接。
+3. 由于客户连接请求是随机到达的异步事件，服务器需要I/O复用技术的`select`系统调用。同时select也用于监听多个客户请求。
+4. 当监听到连接请求后，服务器就调用`accept`函数接受它，并分配一个逻辑单元为新的连接服务。逻辑单元可以是新创建的子进程、子线程或者其他。
+5. 图8-2中，服务器给客户端分配的逻辑单元是由`fork()`创建的子进程。逻辑单元读取客户请求，处理该请求，然后将处理结果返回给客户端。
+
+![image-20230424160909826](./assets/image-20230424160909826.png)
+
+### 2.P2P模型
+
+![image-20230424193924090](./assets/image-20230424193924090.png)
+
+从编程角度来讲，P2P模型可以看作C/S模型的扩展:每台主机既是客户端，又是服务器。因此，我们仍然采用C/S模型来讨论网络编程。
+
+## 两种高效的并发模式
+
+### 半同步/半异步模式
+
+![image-20230424194827513](./assets/image-20230424194827513.png)
+
+### 领导者/追随者模式
 
 
 
@@ -1185,7 +1223,7 @@ int main(int argc, char* argv[]){
 
 使用ET模式，一个socket上的某个事件还是可能触发多次。
 
-如果一个线程刚刚读完socket数据，然后去处理读取的数据，而socket上又有新的数据（再次触发EPOLLIN事件）,此时另一个新线程处理这些数据，于是**出现了两个线程同时操作一个socke**t的局面。这不是我们所期望的。
+如果一个线程刚刚读完socket数据，然后去处理读取的数据，而socket上又有新的数据（再次触发EPOLLIN事件）,此时另一个新线程处理这些数据，于是**出现了两个线程同时操作一个socket**的局面。这不是我们所期望的。
 
 EPOLLONESHOT可以解决此问题。当一个线程处理某个socket，其他线程不可以操作该socket。等线程处理完该socket，重置EPOLLONESHOT事件。
 
@@ -1857,14 +1895,183 @@ struct sigaction
 ## 信号集
 
 ```c
+//	Linux 的 sigset_t 表示一组信号
+#include <bits/sigset.h>
+#define _SIGSET_NWORDS (1024 / (8 * sizeof (unsigned long int)))
+typedef struct
+{
+    unsigned long int __val[_SIGSET_NWORDS];
+}__sigset_t;
+//	sigset_t 实际上是一个长整型数组，数组的每个元素的每个为表示一个信号。
+
+
+//	信号集函数
 #include <signal.h>
-//	sigset_t 表示一组信号
 int sigemptyset (sigset_t* _set)	//	清空信号集
 int	sigfillset(sigset_t* _set)	//	在信号集中设置所有信号
 int	sigaddset(sigset_t* _set,int _signo)	//	将信号_signo添加至信号集中
 int sigdelset(sigset_t*	_set,int _signo)	//	将信号_signo从信号集中删除
 int sigismember(_const sigset_t* _set, int _signo)	//	测试_signo是否在信号集中
 ```
+
+### 进程信号掩码
+
+```c
+#include <signal.h>
+/*
+设置和查看进程的信号掩码
+@param _how: 指定设置进程信号掩码的方式
+@param _set: 指定新的信号掩码。
+@param _oset: 输出原来的信号掩码。_set=NULL时，_oset输出当前信号掩码。
+@return	0: 成功
+        -1：失败，并设置errno
+*/
+int sigprocmask( int _how, _const sigset_t* _set, sigset_t* _oset );
+```
+
+![image-20230425214422341](./assets/image-20230425214422341.png)
+
+### 被挂起的信号
+
+设置进程信号掩码后，被屏蔽的信号将不能被进程接收。如果给进程发送一个被屏蔽的信号，则操作系统将信号设置为进程的一个被挂起信号。如果我们取消对被挂起信号的屏蔽，则它能立即被进程接收到。如下函数可以获得进程当前被挂起的信号集：
+
+```c
+#include <signal.h>
+/*
+@param set: 用于保存被挂起的信号集。
+*/
+int sigpending( sigset_t* set );
+```
+
+`fork`调用产生的**子进程将继承父进程的信号掩码，但具有一个空的挂起信号集**。
+
+## 信号捕捉流程
+
+1. 用户为某信号注册一个信号处理函数`sighandler`。
+2. 当前正在执行主程序，这时候因为中断、异常或系统调用进入内核态。
+3. 在处理完异常要返回用户态的主程序之前，检查到有信号未处理，并发现该信号需要按照用户自定义的函数来处理。
+4. 内核决定返回用户态执行`sighandler`函数，而不是恢复`main`函数的上下文继续执行！（`sighandler`和`main`函数使用的是不同的堆栈空间，它们之间不存在调用和被调用的关系，是两个独立的控制流程）
+5. `sighandler`函数返回后，执行特殊的系统调用`sigreturn`从用户态回到内核态
+6. 检查是否还有其它信号需要递达，如果没有 则返回用户态并恢复主程序的上下文信息继续执行。
+
+## 统一事件源
+
+信号处理函数和程序的主循环
+
+```cpp
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <pthread.h>
+#define MAX_EVENT_NUMBER 1024
+static int pipefd[2];
+
+int setnonblocking( int fd )
+{
+    int old_option = fcntl( fd, F_GETFL );
+    int new_option = old_option | O_NONBLOCK;
+    fcntl( fd, F_SETFL, new_option );
+    return old_option;
+}
+void sig_handler( int sig )
+{
+    /*	保留原来的errno,在函数最后恢复，以保证函数的可重入性	*/
+    int save_errno = errno;
+    int msg = sig;
+    send( pipefd[1], ( char* )&msg, 1, 0 );	/*	将信号值写入管道，以通知主循环	*/
+    errno = save_errno;
+}
+/*	设置信号的处理函数	*/
+void addsig( int sig )
+{
+    struct sigaction sa;
+    memset( &sa, '\0', sizeof( sa ) );
+    sa.sa_handler = sig_handler;
+    sa.sa_flags |= SA_RESTART;
+    sigfillset( &sa.sa_mask );
+    assert( sigaction( sig, &sa, NULL ) != -1 );
+}
+
+int main( int argc, char* argv[] )
+{
+    if( argc <= 2 )
+    {
+        printf( "usage: %s ip_address port_number\n", basename( argv[0]) );
+        return 1;
+    }
+    const char* ip = argv[1];
+    int port = atoi( argv[2] );
+    
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero( &address, sizeof( address ) );
+    address.sin_family = AF_INET;
+    inet_pton( AF_INET, ip, &address.sin_addr );
+    address.sin_port = htons( port );
+    
+    int listenfd = socket( PF_INET, SOCK_STREAM, 0 );
+    assert( listenfd >= 0 );
+    
+    ret = bind( listenfd, ( struct sockaddr* )&address, sizeof( address ) );
+    if( ret == -1 )
+    {
+        printf( "errno is %d\n", errno );
+    }
+    ret = listen( listenfd, 5 );
+    assert( ret != -1 );
+    
+    epoll_event events[ MAX_EVENT_NUMBER ];
+    int epollfd = epoll_create( 5 );
+    assert( epollfd != -1 );
+    addfd( epollfd, listenfd );
+    
+	/*	使用 socketpair 创建管道，注册pipefd[0]上的可读事件	*/
+    ret = sockpair( PF_UNIX, SOCK_STREAM, 0, pipefd );
+    assert( ret != -1 );
+    setnonblocking( pipefd[1] );
+    addfd( epollfd, pipefd[0] );
+}
+```
+
+
+
+# 定时器
+
+网络程序需要处理的三类事件：
+
+- I/O复用
+- 信号
+- 定时事件
+
+![image-20230424145547437](./assets/image-20230424145547437.png)
+
+Linux提供的三种定时机制：
+
+- `socket`选项`SO_RCVTIMEO`和`SO_SNDTIMEO`
+- `SIGALRM`信号
+- `I/O`复用系统调用的超时参数
+
+
+
+## 高性能定时器
+
+### 1.时间轮
+
+![image-20230424151204848](./assets/image-20230424151204848.png)
+
+### 2.事件堆
+
+小顶堆实现
 
 
 
@@ -2447,6 +2654,10 @@ int pthread_create(pthread_t* thread, const pthread_attr_t* attr,
 
 ### 1.信号量
 
+可以直接理解成计数器，信号量会有初值（>0），每当有进程申请进入临界区，通过一个P操作来对信号量进行-1操作，当计数器减到0的时候就说明没有资源了，其他进程要想访问就必须等待，当该进程脱离临界区之后，就会执行V操作来对信号量进行+1操作。
+
+直到信号量值大于0时进程被唤醒，可以访问该临界区；
+
 ### 2.互斥锁
 
 二进制的信号量。当进人关键代码段时，我们需要获得互斥锁并将其加锁,这等价于二进制信号量的Р操作﹔当离开关键代码段时，我们需要对互斥锁解锁，以唤醒其他等待该互斥锁的线程，这等价于二进制信号量的V操作。
@@ -2817,7 +3028,120 @@ int pthread_kill(pthread_t thread, int sig)
 
 
 
-# 线程池
+# 进程池(线程池也类似)
+
+![image-20230424153242240](./assets/image-20230424153242240.png)
+
+
+
+
+
+![image-20230424153611733](./assets/image-20230424153611733.png)
+
+如果客户任务存在上下文关系的，则最好一直用同一个子进程来为之服务，否则实现起来将比较麻烦，因为我们不得不在各子进程之间传递上下文数据。
+
+`epoll`的`EPOLLONESHOT`事件，这一事件能够确保一个客户连接在整个生命周期中仅被一个线程处理。
+
+## 半同步/半异步进程池的实现
+
+![image-20230424200329449](./assets/image-20230424200329449.png)
+
+```c++
+// filename: processpool.h
+#ifndef PROCESSPOOL_H
+#define PROCESSPOOL_H
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <signal.h>
+
+/*		描述一个子进程的类，m_pid是目标子进程的PID，m_pipefd是父进程和子进程通信用的管道		*/
+class process
+{
+    public:
+    	process():m_pid(-1){}
+    public:
+    	pid_t m_pid;
+    	int m_pipefd[2];
+}
+/*		进程池类，将它定义为模板类是为了代码复用。其模板参数是处理逻辑任务的类		*/
+template< typename T >
+class processpool
+{
+private:
+    /*	将构造函数定义为私有的，因此我们只能通过后面的create静态函数来创建processpool实例	*/
+    processpool( int listenfd, int process_number = 8 );
+public:
+    /*	单体模式，以保证程序最多创建一个processpool实例，这是程序正确处理信号的必要条件	*/
+    static processpool< T >* create( int listenfd, int process_number = 8 )
+    {
+        if( !m_instance ){
+            m_instance = new processpool< T >(listenfd, process_number );
+        }
+        return m_instance;
+    }
+    ~processpool()
+    {
+        delete [] m_sub_process;
+    }
+    /*	启动进程池	*/
+    void run();
+
+private:
+    void setup_sig_pipe();
+    void run_parent();
+    void run_child();
+
+private:
+    /*	进程池允许的最大子进程数量	*/
+	static const int MAX_PROCESS_NUMBER = 16;
+    /*	每个子进程最多能处理的客户数量	*/
+    static const int USER_PER_PROCESS = 65536;
+    /*	epoll 最多能处理的时间数	*/
+    static const int MAX_EVENT_NUMBER = 10000;
+    /*	进程池中的进程总数	*/
+    int m_process_number;
+    /*	子进程在池中的序号，从0开始	*/
+    int m_idx;
+    /*	每个进程都有一个epoll内核时间表，用m_epollfd标识		*/
+    /*	监听socket	*/
+    int m_listenfd;
+    /*	子进程通过m_stop来决定是否停止运行	*/
+    int m_stop;
+    /*	保存所有子进程的描述信息	*/
+	process* m_sub_process;
+    /*	进程池静态实例		*/
+    static processpool< T >* m_instance;
+}
+
+template< typename T > 
+processpool< T >* processpool< T >::m_instance = NULL;
+
+/*	用于处理信号的管道，以实现统一事件源。后面称之为信号管道	*/
+static int sig_pipefd[2];
+
+static int setnonblocking( int fd )
+{
+	int old_option = fcntl( fd, F_GETFL );
+    
+}
+```
+
+
+
+
 
 ## 实现简单的Web服务器
 
@@ -2829,6 +3153,6 @@ int pthread_kill(pthread_t thread, int sig)
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
-#include 
+#include <
 ```
 
