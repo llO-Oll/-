@@ -1,0 +1,41 @@
+select c.cust_name,t.order_num,t.OrderTotal from Orders o
+join 
+(select order_num,sum(quantity*item_price) OrderTotal from OrderItems group by order_num) t
+on t.order_num=o.order_num
+join Customers c
+on c.cust_id=o.cust_id
+order by c.cust_name,t.order_num;
+
+
+
+select t1.cust_name,t2.order_num 
+from Customers t1,Orders t2
+where t1.cust_id=t2.cust_id
+order by t1.cust_name asc
+
+
+    double get_max_profit(double M, int N, vector<double>& historyPrices, int K) {
+        // write code here
+    vector<vector<double>> dp(N,vector(2 * K + 1, M));
+    dp[0][0] = M;
+    for (int i = 1; i < 2 * K + 1; i++) {
+        if (i % 2 == 0) {
+            dp[0][i] = M;
+        }
+        else {
+            dp[0][i] = M / historyPrices[0];
+        }
+    }
+    for (int i = 1; i < historyPrices.size(); i++) {
+        for (int j = 1; j < 2 * K + 1; j++) {
+            if (j % 2 == 1) {
+                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - 1] / historyPrices[i]);
+            }
+            else {
+                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - 1] * historyPrices[i]);
+            }
+        }
+    }
+    return dp[historyPrices.size() - 1][2 * K] - M;
+    }
+};
