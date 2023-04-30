@@ -1956,7 +1956,9 @@ int sigpending( sigset_t* set );
 
 ## 统一事件源
 
-信号处理函数和程序的主循环
+**信号是一种异步事件，将其和IO事件统一起来交给主程序处理叫做统一事件源**
+
+一般方法是：信号发送函数将信号值写到管道一端，然后主程序采用IO复用技术监听管道读端，一旦可读事件发生那么主程序可以在事件处理逻辑中定义信号处理方法，这样就和IO事件处理一致。
 
 ```cpp
 #include <sys/types.h>
@@ -1985,7 +1987,9 @@ int setnonblocking( int fd )
 }
 void sig_handler( int sig )
 {
-    /*	保留原来的errno,在函数最后恢复，以保证函数的可重入性	*/
+    /*	
+    保留原来的errno,在函数最后恢复，以保证函数的可重入性
+    */
     int save_errno = errno;
     int msg = sig;
     send( pipefd[1], ( char* )&msg, 1, 0 );	/*	将信号值写入管道，以通知主循环	*/
@@ -1999,7 +2003,7 @@ void addsig( int sig )
     sa.sa_handler = sig_handler;
     sa.sa_flags |= SA_RESTART;
     sigfillset( &sa.sa_mask );
-    assert( sigaction( sig, &sa, NULL ) != -1 );
+    assert( sigaction( sig, &sa, NULL ) != -1 );	//	注册要捕获信号的sig。若触发信号sig，交给sa处理
 }
 
 int main( int argc, char* argv[] )
@@ -2040,8 +2044,92 @@ int main( int argc, char* argv[] )
     assert( ret != -1 );
     setnonblocking( pipefd[1] );
     addfd( epollfd, pipefd[0] );
+    
+    /*	设置一些信号的处理函数	*/
+    addsig( SIGHUP );
+    addsig( SIGCHLD );
+    addsig( SIGTERM );
+    addsig( SIGINT );
+    bool stop_server = false;
+    
+    while( !stop_server )
+    {
+    	int number = epoll_wait( epollfd, events, MAX_EVENT_NUMBER, -1 );
+    	if( ( number < 0 ) && ( errno != EINTR ) )
+        {
+            printf( "epoll failure\n" );
+            break;
+        }
+        
+        for( int i=0; i<number; i++)
+        {
+            int sockfd = events[i].data.fd;
+            /*	如果就绪的文件描述符是listenfd,则处理新的连接	*/
+            if( sockfd == listenfd )
+            {
+                struct sockaddr_in client_address;
+                socklen_t client_addrlength = sizeof( client_address );
+                int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
+                addfd( epollfd, connfd );
+            }
+            /*	如果就绪的文件描述符是pipefd[0],则处理信号	*/
+            else if( ( sockfd == pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            {
+                int sig;
+                char signals[1024];
+                ret = recv( pipefd[0], signals, sizeof( signals ), 0 );
+                if( ret == -1 )
+                {
+                    continue;
+                }
+                else if( ret == 0 )
+                {
+                    continue;
+                }
+                else
+                {
+                    /*	因为每个信号值占1个字节，所以按字节来逐个接收信号。我们以SIGTERM为例，来说明如何终止服务器主循环	*/
+                    for( int i=0; i<ret; ++i){
+                        switch( signals[i] )
+                        {
+                            case SIGCHLD:
+                            case SIGHUP:
+                            {
+                            	continue;        
+                            }
+                            case SIGTERM:
+                            case SIGINT:
+                            {
+                            	stop_server = true;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+        	{
+        	}
+        }
+    }
+    printf( "colse fds\n" );
+    close( listenfd );
+    close( pipefd[1] );
+    close( pipefd[0] );
+    return 0;
 }
 ```
+
+**为什么要保证信号处理函数`sig_handler`的可重入性。**
+
+中断可能发生在任务执行的任何时间点。一个函数的执行期间被中断后，到重新恢复到断点进行执行的过程中，要保证函数所依赖的环境没有发生改变。所以应当在`sig_handler`处理信号前保存`errno`，并在其后恢复`errno`。 
+
+## 网络编程相关的信号
+
+### SIGHUP
+
+### SIGPIPE
+
+### SIGURG
 
 
 
@@ -3046,7 +3134,7 @@ int pthread_kill(pthread_t thread, int sig)
 
 ![image-20230424200329449](./assets/image-20230424200329449.png)
 
-```c++
+```cpp
 // filename: processpool.h
 #ifndef PROCESSPOOL_H
 #define PROCESSPOOL_H
@@ -3135,8 +3223,228 @@ static int sig_pipefd[2];
 static int setnonblocking( int fd )
 {
 	int old_option = fcntl( fd, F_GETFL );
+    int new_option = old_option | O_NONBLOCK;
+    fcntl( fd, F_SETFL, new_option );
+    return old_option;
+}
+
+static void addfd( int epollfd, int fd )
+{
+	epoll_event event;
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLET;
+    epoll_ctl( epollfd, EPOLL_CTL_ADD, fd, &event );
+    setnonblocking( fd );
+}
+
+/*	从epollfd标识的epoll内核事件表中删除fd上的所有注册事件	*/
+static void removefd( int epollfd, int fd )
+{
+    epoll_ctl( epollfd, EPOLL_CTL_DEL, fd, 0 );
+    close( fd ); 
+}
+
+static void sig_handler( int sig )
+{
+    int save_errno = errno;
+    int msg = sig;
+    send( sig_pipefd[1], (char* )&msg, 1, 0 );
+    errno = save_errno;
+}
+
+static void addsig( int sig, void( handler )( int ), bool restart = true )
+{
+    struct sigaction sa;
+    memset( &sa, '\0', sizeof( sa ) );
+    sa.sa_handler = handler;
+    if( restart )
+    {
+        sa.sa_flags |= SA_RESTART;
+    }
+    sigfillset( &sa.sa_mask );
+    assert( sigaction( sig, &sa, NULL ) != -1 );	//	注册要捕获信号的sig。若触发信号sig，交给sa处理
+}
+
+template< typename T >
+processpool< T >::processpool( int listenfd, int process_number ):m_listenfd( listenfd ), m_process_number( process_number ), m_idx( -1 ), m_stop( false )
+{
+    assert( ( process_number > 0 ) && ( process_number <= MAX_PROCESS_NUMBER ) );
+    m_sub_process = new process[ process_number ];
+    assert( m_sub_process );
+    
+    /*	创建process_number个子进程，并建立它们和父进程之间的管道	*/
+    for( int i=0; i<process_number; i++ )
+    {
+        int ret = sockpair( PF_UNIX, SOCK_STREAM, 0, m_sub_process[i].m_pipefd );
+        assert( ret == 0 );
+        
+        m_sub_process[i].m_pid = fork();
+        assert( m_sub_process[i].m_pid >= 0 );
+        if( m_sub_process[i].m_pid > 0 )
+        {
+            close( m_sub_process[i].m_pipefd[1] );
+            continue;
+        }
+        else
+        {
+            close( m_sub_process[i].m_pipefd[0] );
+            m_idx = i;
+            break;
+        }
+    }
+}
+
+/*	统一事件源	*/
+template< typename T >
+void processpool< T >::setup_sig_pipe()
+{
+	/*	创建epoll 事件监听表 和 信号管道	*/
+    m_epollfd = epoll_create( 5 ); 
+    assert( m_epollfd != -1 );
+    
+    int ret = sockpair( PF_UNIX, SOCK_STREAM, 0, sig_pipefd );
+    assert( ret != -1 );
+    
+    setnonblocking( sig_pipefd[1] );
+    addfd( m_epollfd, sig_pipefd[0] );
+	/*	设置信号处理函数	*/
+    addsig( SIGCHLD, sig_handler );
+    addsig( SIGINT, sig_handler );
+    addsig( SIGPIPE, SIG_IGN );
+}
+
+/*	父进程中m_idx值为-1，子进程中m_idx值大于等于0，我们据此判断接下来要运行的是父进程代码还是子进程代码	*/
+template< typename T >
+void processpool< T >::run()
+{
+    if( m_idx != -1 )
+    {
+        run_child();
+        return;
+    }
+    run_parent();
+}
+
+template< typename T >
+void processpool< T >::run_child()
+{
+    setup_sig_pipe();
+    
+    /*	每个子进程都通过其在进程池中的序号值m_idx找到与父进程通信的管道	*/
+    int pipefd = m_sub_process[m_idx].m_pipefd[ 1 ];
+    /*	子进程需要监听管道文件描述符pipefd,因为父进程将通过它来通知子进程accept新连接	*/
+    addfd( m_epollfd, pipefd );
+    
+    epoll_event events[ MAX_EVENT_NUMBER ];
+    T* users = new T [ USER_PER_PROCESS ];
+    assert( users );
+    int number = 0;
+    int ret = -1;
+    
+    while( !m_stop )
+    {
+        number = epoll_wait( m_epollfd, events, MAX_EVENT_NUMBER, -1 );
+        if((number < 0 ) && ( errno != EINTR ))
+        {
+            printf( "epoll failure\n" );
+            break;
+        }
+        
+        for( int i=0; i<number; i++)
+        {
+            int sockfd = events[i].data.fd;
+            if( (sockfd == pipefd ) && ( events[i].events & EPOLLIN ) )
+            {
+                int client = 0;
+                /*	从父、子进程之间的管道读取数据，并将结果保存在变量client中。如果读取成功，则表示有新客户连接到来	*/
+                ret = recv( sockfd, ( char* )&client, sizeof( client ), 0 );
+                if((( ret < 0 ) && (errno != EAGAIN ) ) || ret == 0 )
+                {
+                    continue;
+                }
+                else
+                {
+                    struct sockaddr_in client address;
+                    socklen_t client_addrlength = sizeof( client_address );
+                    int connfd = accept( m_listenfd, ( struct sockaddr* ) &client_address, &client_addrlength );
+                    if( connfd < 0 )
+                    {
+                        printf( "errno is: %d\n", errno );
+                        continue;
+                    }
+                    
+                    addfd( m_epollfd, connfd );	//监听新连接
+
+                    /*	模板类T必须实现init方法(在调用这个头文件的文件里实现)，以初始化一个客户连接。我们直接使用connfd来索引逻辑处理对象(T类型的对象)，以提高程序效率	*/
+                    users[connfd].init( m_epollfd, connfd, client_address );
+                }
+            }
+            /*	下面处理子进程接收到的信号	*/
+            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            {
+                int sig;
+                char signals[1024];
+                ret = recv( sig_pipefd[0], signals, sizeof( signals ), 0 );
+                if( ret <= 0 )
+                {
+                	continue;
+                }
+                else
+                {
+                    for( int i = 0; i < ret; i++){
+                        switch( signals[i] )
+                        {
+                            case SIGCHLD:
+                            {
+                            	pid_t pid;
+                                int stat;
+                                while((pid = waitpid(-1, &stat, WNOHANG )) > 0 )
+                                {
+                                    continue;
+                                }
+                            }
+                            case SIGTERM:
+                            case SIGINT:
+                            {
+                        		m_stop = true;
+                            	break;
+                            }
+                            default:
+                            {
+                            	break;        
+                            }
+                        }
+                    }
+                }
+            }
+            /*	如果是其他可读数据，那么必然是客户请求到来。调用逻辑处理对象的process方法处理之	*/
+            else if( events[i].events & EPOLLIN )
+            {
+                users[sockfd].process();
+            }
+            else
+            {
+                continue;
+            }
+        }
+    }
+    
+    delete [] users;
+    users = NULL;
+    close( pipefd );
+    close( m_epollfd );
+}
+
+template< typename T >
+void processpool< T >::run_parent()
+{
+    setup_sig_pipe();
+    
+    /*	父进程监听m_listenfd	*/
+    addfd( m_epollfd, m_listenfd );
     
 }
+
 ```
 
 
