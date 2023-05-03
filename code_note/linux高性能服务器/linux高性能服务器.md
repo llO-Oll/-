@@ -10,6 +10,22 @@
 
 大端字节序又称网络字节序。
 
+linux提供下面4个函数完成主机字节序和网络字节序之间的转换：
+
+```c
+#include <netinet/in.h>
+/*	host to network long	*/
+unsigned long int htonl( unsigned long int hostlong );
+
+unsigned short int htons( unsigned short int hostshort );
+
+unsigned long int ntohl( unsigned long int netlong );
+
+unsigned short int ntohs( unsigned short int netshort );
+```
+
+
+
 ### IP地址转换函数
 
 ```c
@@ -85,7 +101,6 @@ struct sockaddr_in6
     struct in6_addr sin6_addr;    //
     u_int32_t sin_scope_id;    //
 }
-
 
 
 # include <sys/types.h>
@@ -3132,6 +3147,8 @@ int pthread_kill(pthread_t thread, int sig)
 
 ## 半同步/半异步进程池的实现
 
+![image-20230502160848410](assets/image-20230502160848410.png)
+
 ![image-20230424200329449](./assets/image-20230424200329449.png)
 
 ```cpp
@@ -3204,6 +3221,7 @@ private:
     /*	子进程在池中的序号，从0开始	*/
     int m_idx;
     /*	每个进程都有一个epoll内核时间表，用m_epollfd标识		*/
+    int m_epollfd;
     /*	监听socket	*/
     int m_listenfd;
     /*	子进程通过m_stop来决定是否停止运行	*/
@@ -3442,12 +3460,287 @@ void processpool< T >::run_parent()
     
     /*	父进程监听m_listenfd	*/
     addfd( m_epollfd, m_listenfd );
+     
+    epoll_event events[ MAX_EVENT_NUMBER ];
+    int sub_process_counter = 0;
+    int new_conn = 1;
+    int number = 0;
+    int ret = -1;
     
+    while( !m_stop )
+    {
+        number = epoll_wait( m_epollfd, events, MAX_EVENT_NUMBER, -1 );
+        if( ( number < 0 ) && ( errno != EINTR ) )
+        {
+            printf(	"epoll failure\n" );
+            break;
+        }
+        for( int i=0; i<number; i++ )
+        {
+            int sockfd = events[i].data.fd;
+            if( sockfd == m_listenfd )
+            {
+        /*	如果有新连接到来，就采用Round Robin方式将其分配给一个子进程处理	*/			int i = sub_process_counter;
+                do{
+                    if(m_sub_process[i].m_pid != -1 )
+                    {
+                        break;
+                    }
+                    i = ( i+1 ) % m_process_counter;
+            	}while( i != sub_process_counter );
+            
+            
+            
+                if( m_sub_process[i].m_pid == -1 )
+                {
+                    m_stop = true;
+                    break;
+                }
+                sub_process_counter = (i+1) % m_process_number;
+                send( m_sub_process[i].m_pipefd[0], (char*)&new_conn, sizeof(new_conn), 0 );
+                pritnf( "send request to child %d\n", i );
+        	}
+        /*	下面处理父进程接收到的信号	*/
+            else if( ( sockfd == sig_pipefd[0] ) ) && ( events[i].events & EPOLLIN ) )
+            {
+                int sig;
+                char signals[1024];
+                ret = recv( sig_pipefd[0], signals, sizeof( signals ), 0 );
+                if( ret <= 0 )
+                {
+                    continue;
+                }
+                else
+                {
+                    for( int i=0; i<ret; i++ )
+                    {
+                        switch( signals[i] )
+                        {
+                            case SIGCHLD:
+                            {
+                                pid_t pid;
+                                int stat;
+                                while( ( pid = waitpid(-1, &stat, WNOHANG) ) )//wait_pid非阻塞，如果任意子进程还没有结束，则也立即返回0，任意子进程正常退出，则返回该子进程PID。
+                                {
+                                    for(int i=0; i<m_process_number;i++)
+                                    {
+                                    /*	如果进程池中第i个子进程退出了，则主进程关闭相应的通信管道，并设置相应的m_pid为-1，以标记该子进程已经退出	*/
+                                        if(m_sub_process[i].m_pid == pid)
+                                        {
+                                            printf("child %d join\n", i);
+                                            close( m_sub_process[i].m_pipefd[0] );
+                                            m_sub_process[i].m_pid = -1;
+                                        }
+                                    }
+                                }
+                                /*	如果所有子进程都已经退出了，则父进程也退出	*/
+                                m_stop = true;
+                                for(int i = 0; i < m_process_number; ++i)
+                                {
+                                    if( m_sub_process[i].m_pid != -1 )
+                                    {
+                                        m_stop = false;
+                                    }
+                                }
+                                break;
+                            }
+                            case SIGTERM:
+                            case SIGINT:
+                            {
+                            /*	如果父进程收到终止信号，那么就杀死所有子进程，并等待它们全部结束。当然，通知子进程结束更好的方法是向父、子进程之间的通信管道发送特殊数据。	*/		
+                                printf("kill all the child now\n");
+                                for(int i=0; i<m_process_number;++i)
+                                {
+                                    int pid = m_sub_process[i].m_pid;
+                                    if( pid != -1 )
+                                    {
+                                        kill( pid, SIGTERM );
+                                    }
+                                }
+                                break;
+                            }
+                            default:
+                            {
+                                break;        
+                            }
+                        }
+                    }
+                }
+            }
+            else
+        	{
+            	continue; 
+        	}
+    	}
+    }
+    close(m_epollfd);
 }
+```
+
+## 用进程池实现的简单CGI服务器
+
+```cpp
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/epoll.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+
+#include "processpool.h"	
+
+class cgi_conn
+{
+public:
+    cgi_conn(){}
+    ~cgi_conn(){}
+    /*	初始化客户连接，清空读缓冲区	*/
+    void init( int epollfd, int sockfd, const sockaddr_in& client_addr )
+    {
+    	m_epollfd = epollfd;
+    	m_sockfd = sockfd;
+    	m_address = client_addr;
+        memset( m_buf, '\0', BUFFER_SIZE );
+        m_read_idx = 0;
+    }
+    
+    void process()
+    {
+        int idx = 0;
+        int ret = -1;
+        /*	循环读取和分析客户数据	*/
+        while( true )
+        {
+            idx = m_read_idx;
+            ret = recv( m_sockfd, m_buf + idx, BUFFER_SIZE-1-idx, 0 );
+            /*	如果读操作发生错误，则关闭客户连接。但如果是暂时无数据可读，则退出循环	*/
+            if( ret < 0 )
+            {
+                if( errno != EAGAIN )
+                {
+                    removefd( m_epollfd, m_sockfd );
+                }
+                break;
+            }
+            /*	如果对方关闭连接，则服务器也关闭连接	*/
+            else if( ret == 0 )
+            {
+                removefd( m_epollfd, m_sockfd );
+                break;
+            }
+            else
+            {
+            	m_read_idx += ret;
+                printf( " user content is: %s\n ", m_buf );
+                for( ; idx < m_read_idx; ++idx )
+                {
+            		if( ( idx >= 1 ) && ( m_buf[idx-1] == '\r' ) && ( m_buf[idx] == '\n' ) )
+                    {
+                        break;
+                    }
+                }
+                /*	如果没有遇到字符"\r\n",则需要读取更多客户数据	*/
+                if( idx == m_read_idx )
+                {
+                    continue;
+                }
+                m_buf[idx-1] = '\0';
+                
+                char* file_name = m_buf;
+                /*	判断客户需要要运行的CGI程序是否存在	*/
+                if( access( file_name, F_OK ) = -1 )
+                {
+                    removefd( m_epollfd, m_sockfd );
+                    break;
+                }
+                /*	创建子进程来执行CGI程序	*/
+                ret = fork();
+                if( ret == -1 )
+                {
+                    removefd( m_epollfd, m_sockfd );
+                    break;
+                }
+                else if( ret > 0 )
+                {
+               		/* 在父进程中只需要关闭连接	*/
+                    removefd( m_epollfd, m_sockfd );
+                    break;
+                }
+                else
+                {
+                    /*	子进程将标准输出定向到m_sockfd,并执行CGI程序  */
+                    close( STDOUT_FILENO );
+                    dup( m_sockfd );
+                    execl( m_buf, m_buf, 0 );
+                    exit( 0 );
+                }
+            }
+        }
+    }
+private:
+    /*	读缓冲区的大小	*/
+    static const int BUFFER_SIZE = 1024;
+    static int m_epollfd;
+    int m_sockfd;
+    sockaddr_in m_address;
+    char m_buf[BUFFER_SIZE];
+    /*	标记读缓冲中已经读入的客户数据的最后一个字节的下一个位置	*/
+    int m_read_idx;
+};
+int cgi_conn::m_epollfd = -1;
+
+int main( int argc, char* argv[] )
+{
+    if( argc <= 2 )
+    {
+        printf("usage: %s ip_address port_number\n", basename( argv[0] ));
+        return 1;
+    }
+    const char* ip = argv[1];
+    int port = atoi( argv[2] );
+    
+    int listenfd = socket( PF_INET, SOCK_STREAM, 0 );
+    assert( listenfd >= 0 );
+    
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero( &address, sizeof( address ));
+    address.sin_family = AF_INET;
+    inet_pton( AF_INET, ip, &address.sin_addr );
+    address.sin_port = htons( port );
+    
+    ret = bind( listenfd, ( struct sockaddr* )&address, sizeof( address ) );
+    assert( ret != -1 );
+    ret = listen( listenfd, 5 );
+    assert( ret != -1 );
+    
+    processpool< cgi_conn >* pool = processpool< cgi_conn >::create( listenfd );
+    if( pool )
+    {
+        pool->run();
+        delete pool;
+    }
+    close( listenfd );	// main函数创建了文件描述符listenfd, 那么就由它来亲自关闭
+    return 0;
+}
+
 
 ```
 
 
+
+## 半同步/半反应堆模式
+
+![image-20230502161312506](assets/image-20230502161312506.png)
 
 
 
