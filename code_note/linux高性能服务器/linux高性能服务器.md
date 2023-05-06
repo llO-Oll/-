@@ -3742,11 +3742,135 @@ int main( int argc, char* argv[] )
 
 ![image-20230502161312506](assets/image-20230502161312506.png)
 
+```cpp
+// filename: threadpool.h
+#ifndef THREADPOOL_H
+#define THREADPOOL_H
+
+#include <list>
+#include <cstdio>
+#include <exception>
+#include <pthread.h>
+/*	引用第 14 章介绍的线程同步机制的包装类	*/
+#include "locker.h"
+
+template< typename T >
+class threadpool
+{
+public:
+    /*	参数thread_number是线程池中线程的数量，max_requests是请求队列中最多允许的处理的请求的数量	*/
+    threadpool( int thread_number = 8, int max_requests = 10000 );
+    ~threadpool();
+    /*	往请求队列中添加任务	*/
+	bool append( T* request );
+
+private:
+    /*	工作线程运行的函数， 它不断从工作队列中取出任务并执行之	*/
+    static void* worker( void arg );
+    void run();
+    
+private:
+    int m_thread_number;	/*	线程池中的线程数	*/
+    int m_max_requests;		/*	请求队列中允许的最大请求数	*/
+    pthread_t* m_threads;	/*	描述线程池的数组，其大小为m_thread_number	*/
+    std::list< T* > m_workqueue;	/*	请求队列	*/
+    locker m_queuelocker;	/*	保护请求队列的互斥锁	*/
+    sem m_queuestat;	/*	是否有线程需要处理	*/
+    bool m_stop;	/*	是否结束线程	*/
+};
+
+template< typename T >
+threadpool< T >::threadpool( int thread_number, int max_requests ):m_thread_number( thread_number ),m_max_requests( max_requests ), m_stop( false ), m_threads( NULL )
+{
+	if(( thread_number <= 0 ) || ( max_requests <= 0 ) )
+    {
+        throw std::exception();
+    }
+    
+    m_threads = new pthread_t[ m_thread_number ];
+    if( !m_threads )
+    {
+        throw std::exception();
+    }
+    
+    /*	创建thread_number个线程，并将它们都设置为脱离线程	*/
+    for( int i=0; i<thread_number; i++ )
+    {
+        printf( " create the %dth thread\n ", i ); 
+        if( pthread_create( m_threads + i, NULL, worker, this ) != 0 )
+        {
+            delete [] m_threads;
+            throw std::exception;
+        }
+        if( pthread_detach( m_threads[i] ) )
+        {
+            delete [] m_threads;
+            throw std::exception;
+        }
+    }
+}
+
+template< typename T >
+threadpool< T >::~threadpool()
+{
+    delete [] m_threads;
+    m_stop = true;
+}
+
+template< typename T >
+bool threadpool< T >::append( T* request )
+{
+	/*	操作工作队列时一定要加锁，因为它被所有线程共享	*/
+    m_queuelocker.lock();
+    if( m_workqueue.size() > m_max_requests )
+    {
+        m_queuelocker.unlock();
+        return false;
+    }
+    m_workqueue.push_back( request );
+    m_queuelocker.unlock();
+    m_queuestat.post();
+    return true;
+}
+
+template< typename T >
+void* threadpool< T >::worker( void* arg )
+{
+    threadpool* pool = ( threadpool* )arg;
+    pool->run();
+    return pool;
+}
+
+template< typename T >
+void threadpool< T >::run()
+{
+    while( !m_stop ){
+        m_queuestat.wait();
+        m_queuelocker.lock();
+        if( m_workqueue.empty() )
+        {
+            m_queuelocker.unlock();
+            continue;
+        }
+        T* request = m_workqueue.front();
+        m_workqueue.pop_front();
+        m_queuelocker.unlock();
+        if( !request )
+        {
+            continue;
+        }
+        request->process();
+    }
+}
+#endif
+```
+
 
 
 ## 实现简单的Web服务器
 
-```c
+```cpp
+//filename: http_conn.h
 #ifndef HTTPCONNECTION_H
 #define HTTPCONNECTION_H
 
@@ -3754,6 +3878,389 @@ int main( int argc, char* argv[] )
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
-#include <
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <stdarg.h>
+#include <errno.h>
+#include "locker.h"
+
+class http_conn
+{
+public:
+/*	文件名的最大长度	*/
+static const int FILENAME_LEN = 200;
+/*	读缓冲区的大小		*/
+static const int READ_BUFFER_SIZE = 2048;
+/*	写缓冲区的大小		*/
+static const int WRITE_BUFFER_SIZE = 1024;
+/*	HTTP的请求方法，但我们仅支持GET	*/
+enum METHOD { GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT, PATCH	};
+/*	解析客户请求时，主状态机所处的状态	*/
+enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0,
+                 	CHECK_STATE_HEADER,
+                  	CHECK_STATE_CONTENT
+                 };
+/*	服务器处理HTTP请求的可能结果	*/	
+enum HTTP_CODE { NO_REQUEST, GET_REQUEST, BAD_REQUEST, NO_RESOURCE,
+               FORBIDDEN_REQUEST, FILE_REQUEST, INTERNAL_ERROR, CLOSED_CONNECTION };
+/*	行的读取状态	*/	
+enum LINE_STATUS { LINE_OK = 0, LINE_BAD }
+    
+public:
+    http_conn(){};
+    ~http_conn(){};
+public:
+	/*	初始化新接受的连接 */
+    void init( int sockfd, const sockaddr_in& addr );
+    /*	关闭连接	*/
+    void close_conn( bool real_close = true );
+    /*	处理客户请求	*/
+    void process();
+    /*	非阻塞读操作	*/
+    bool read();
+    /*	非阻塞写操作	*/
+    bool write();
+    
+private:
+    /*	初始化连接	*/
+    void init();
+    /*	解析HTTP请求	*/
+	HTTP_CODE process_read();
+    /*	填充HTTP应答	*/
+    bool process_write( HTTP_CODE ret );
+    /*	下面这一组函数被process_read调用以分析HTTP请求	*/
+    HTTP_CODE parse_request_line( char* text );
+    HTTP_CODE parse_headers( char* text );
+    HTTP_CODE parse_content( char* text );
+    HTTP_CODE do_request();
+    char* get_line(){ return m_read_buf + m_start_line; };
+    LINE_STATUS parse_line();
+    
+    /*	下面这一组函数被process_write调用以填充HTTP应答	*/
+	void unmap();
+	bool add_response( const char* format, ... );
+	bool add_content( const char* content );
+	bool add_status_line( int status, const char* title );
+	bool add_headers( int content_length );
+	bool add_content_length( int content_length );
+	bool add_linger();
+	bool add_blank_line();
+
+public:
+    /*	所有socket上的事件都被注册到同一个epoll内核事件表中，所以将epoll文件描述符设置为静态的	*/
+    static int m_epollfd;
+    /*	统计用户数量	*/
+    static int m_user_count;
+
+private:
+    /*	该HTTP连接的socket和对方的socket地址	*/
+    int m_sockfd;
+    sockaddr_in m_address;
+    
+    /*	读缓冲区	*/
+    char m_read_buf[ READ_BUFFER_SIZE ];
+    /*	标识读缓冲中已经读入的客户数据的最后一个字节的下一个位置	*/
+    int m_read_idx;
+    /*	当前正在分析的字符在读缓冲区中的位置	*/
+    int m_checked_idx;
+    /*	当前正在解析的行的起始位置	*/
+    int m_start_line;
+    /*	写缓冲区	*/
+    char m_write_buf[ WRITE_BUFFER-SIZE ];
+    /*	写缓冲区中待发送的字节数	*/
+    int m_write_idx;
+    
+    /*	主状态机当前所处的状态	*/
+    CHECK_STATE m_check_state;
+    /*	请求方法	*/
+    METHOD m_method;
+    
+    /*	客户请求的目标文件的完整路径，其内容等于doc_root + m_url, doc_root是网站根目录	*/
+    char m_real_file[ FILENAME_LEN ];
+    /*	客户请求的目标文件的文件名	*/
+    char* m_url;
+    /*	HTTP协议版本号，我们仅支持HTTP/1.1	*/
+    char* m_version;
+    /*	主机名	*/
+    char* m_host;
+    /*	HTTP请求的消息体的长度	*/
+    int m_content_length;
+    /*	HTTP请求是否要求保持连接	*/
+    bool m_linger;
+    
+    /*	客户请求的目标文件被mmap到内存中的起始位置	*/
+    char* m_file_address;
+    /*	目标文件的状态。通过它我们可以判断文件是否存在、是否为目录、是否可读、并获取文件大小等信息	*/
+    struct stat m_file_stat;
+    /*	我们将采用writev来执行写操作，所以定义下面两个成员，其中m_iv_count表示被写内存块的数量	*/
+    struct iovec m_iv[2];
+    int m_iv_count;
+};
+#endif
+```
+
+```cpp
+//filename: http_conn.cpp
+#include "http_conn.h"
+
+/*	定义HTTP响应的一些状态信息	*/
+const char* ok_200_title = "OK";
+const char* error_400_title = "Bad Request";
+const char* error_400_form = "Your request has bad syntax or is inherently impossible to satisfy.\n";
+const char* error_403_title = "Forbidden";
+const char* error_403_form = "You do not have permission to get file from this server.\n";
+const char* error_404_title = "Not Found";
+const char* error_404_form = "The requested file was not found on this server.\n";
+const char* error_500_title = "Internal Error";
+const char* error_500_form = "There was an unusual problem serving the requested file.\n";
+/*	网站的根目录	*/
+const char* doc_root = "/var/www/html";
+
+int setnonblocking( int fd )
+{
+    int old_option = fcntl(fd, F_GETFL );
+    int new_option = old_option | O_NONBLOCK;
+    fcntl( fd, F_SETFL, new_option );
+    return old_option;
+}
+
+void addfd( int epollfd, int fd, bool one_shot )
+{
+    epoll_event event;
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+    if( one_shot )
+    {
+        event.events |= EPOLLONESHOT;
+    }
+    epoll_ctl( epollfd, EPOLL_CTL_ADD, fd, &event );
+    setnonblocking( fd );
+}
+
+void removefd( int epollfd, int fd )
+{
+    epoll_ctl( epollfd, EPOLL_CTL_DEL, fd, 0 );
+    close( fd );
+}
+
+void modfd( int epollfd, int fd, int ev )
+{
+    epoll_event event;
+    event.data.fd = fd;
+    event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+    epoll_ctl( epollfd, EPOLL_CTL_MOD, fd, &event );
+}
+
+int http_conn::m_user_count = 0;
+int http_conn::m_epollfd = -1;
+
+void http_conn::init( int sockfd, const sockaddr_in& addr )
+{
+    m_sockfd = sockfd;
+    m_address = addr;
+    /*	如下两行是为了避免TIME_WAIT状态，仅用于调试，实际使用时应该去掉	*/
+    int reuse = 1;
+    setsockopt( m_sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( reuse ) );
+    addfd( m_epollfd, sockfd, true );
+    m_user_count++;
+    
+    init();
+}
+
+void http_conn::init()
+{
+    m_check_state = CHECK_STATE_REQUESTLINE;
+    m_linger = false;
+    
+    m_method = GET;
+    m_url = 0;
+    m_version = 0;
+    m_content_length = 0;
+    m_host = 0;
+    m_start_line = 0;
+    m_checked_idx = 0;
+    m_read_idx = 0;
+    m_write_idx = 0;
+    memset( m_read_buf, '\0', READ_BUFFER_SIZE );
+    memset( m_write_buf, '\0', WRITE_BUFFER_SIZE );
+    memset( m_real_file, '\0', FILENAME_LEN );
+}
+
+/*	从状态机	*/
+http_conn::LINE_STATUS http_conn::parse_line()
+{
+    char temp;
+    for(;m_checked_idx < m_read_idx; ++m_checked_idx ){
+        temp = m_read_buf[ m_checked_idx ];
+        if( temp == '\r' )
+        {
+            if( ( m_checked_idx + 1 ) == m_read_idx )
+            {
+                return LINE_OPEN;
+            }
+            else if ( m_read_buf[ m_checked_idx + 1 ] == '\n' )
+            {
+                m_read_buf[ m_checked_idx++ ] = '\0';
+                m_read_buf[ m_checked_idx++ ] = '\0';
+                return LINE_OK;
+            }
+            return LINE_BAD;
+        }
+        else if( temp == '\n' )
+        {
+            if( ( m_checked_idx > 1 ) && ( m_read_buf[ m_checked_idx - 1 ] == '\r' ) )
+            {
+                m_read_buf[ m_checked_idx-1 ] = '\0';
+                m_read_buf[ m_checked_idx++ ] = '\0';
+                return LINE_OK;
+            }
+            return LINE_BAD;
+        }
+    }
+    return LINE_OPEN;
+}
+
+/*	循环读客户数据，直到无数据可读或者对方关闭连接	*/
+bool http_conn::read()
+{
+    if( m_read_idx >= READ_BUFFER_SIZE )
+    {
+        return false;
+    }
+    int bytes_read = 0;
+    while( true )
+    {
+        bytes_read = recv( m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0 );
+        if( bytes_read == -1 )
+        {
+            if( errno == EAGAIN || errno == EWOULDBLOCK )
+            {
+                break;
+            }
+            return false;
+        }
+        else if( bytes_read == 0 )
+        {
+            return false;
+        }
+        m_read_idx += bytes_read;
+    }
+    return true;
+}
+
+/*	解析HTTP请求行，获得请求方法、目标url,以及HTTP版本号	*/
+http_conn::HTTP_CODE http_conn::parse_request_line( char* text )
+{
+    m_url = strpbrk( text, " \t" );
+    if( !m_url )
+    {
+        return BAD_REQUEST;
+    }
+    *m_url++ = '\0';
+    
+    char* method = text;
+    if( strcasecmp( method, "GET" ) == 0 )
+    {
+        m_method = GET;
+    }
+    else
+    {
+        return BAD_REQUEST;
+    }
+    m_url += strspn( m_url, " \t" );
+    m_version = strpbrk( m_url," \t" );
+    if( !m_version )
+    {
+        return BAD_REQUEST;
+    }
+    *m_version++ = '\0';
+    m_version += strspn( m_version, " \t" );
+    if( strcasecmp( m_version, "HTTP/1.1" ) != 0 )
+    {
+        return BAD_REQUEST;
+    }
+    if( strncasecmp( m_url, "http://", 7 ) == 0 )
+    {
+        m_url += 7;
+        m_url = strchr( m_url, '/' );
+    }
+    if( !m_url || m_url[0] != '/' )
+    {
+        return BAD_REQUEST;
+    }
+    m_check_state = CHECK_STATE_HEADER;
+    return NO_REQUEST;
+}
+
+/*	解析HTTP请求的一个头部信息	*/
+http_conn::HTTP_CODE http_conn::parse_headers( char* text )
+{
+    /*	遇到空行，表示头部字段解析完毕	*/
+    if( text[0] == '\0' )
+    {
+        /*	如果HTTP请求有消息体，则还需要读取m_content_length字节的消息体，状态机转移到CHECK_STATE_CONTENT状态	*/
+        if( m_content_length != 0 )
+        {
+            m_check_state = CHECK_STATE_CONTENT;
+            return NO_REQUEST;
+        }
+        
+        /*	否则说明我们已经得到了一个完整的HTTP请求	*/
+        return GET_REQUEST;
+    }
+    /*	处理Connection头部字段	*/
+    else if( strncasecmp( text, "Connection:", 11 ) == 0 )
+    {
+        text += 11;
+        text += strspn( text, " \t" );
+        if( strcasecmp( text, "keep-alive" ) == 0 )
+        {
+            m_linger = true;
+        }
+    }
+    /*	处理Content-Length头部字段	*/
+    else if( strncasecmp( text, "Content-Length:", 15 ) == 0 )
+    {
+        text += 15;
+        text += strspn( text, " \t" );
+        m_content_length = atol( text );
+    }
+    /*	处理Host头部字段	*/
+	else if( strncasecmp( text, "Host:", 5 ) == 0 )
+    {
+        text += 5;
+        text += strspn( text, " \t" );
+        m_host = text;
+    }
+    else
+    {
+        printf("oop! unknow header %s\n", text );
+    }
+    return NO_REQUEST;
+}
+
+/*	我们没有真正解析HTTP请求的消息体，只是判断它是否被完整地读入了	*/
+http_conn::HTTP_CODE http_conn::parse_content( char* text )
+{
+    if( m_read_idx >= ( m_content_length + m_checked_idx ) )
+    {
+        text[ m_content_length ] = '\0';
+        return GET_REQUEST;
+    }
+    return NO_REQUEST;
+}
+
+/*	主状态机。其分析请参考8.6节，这里不在赘述	*/
+http_conn::HTTP_CODE http_conn::process_read()
+{
+    
+}
 ```
 

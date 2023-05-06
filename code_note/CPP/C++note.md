@@ -1852,6 +1852,10 @@ unique_ptr<int[]> up (new int[10]);
 up.release();    //    自动用delete[]销毁其指针
 ```
 
+**delete**用于释放由new创建的单个对象，**delete [] **用于释放由new创建的数组对象 ，一般都是配对使用。
+
+
+
 ### allocator类
 
 ------
