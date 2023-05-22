@@ -3764,3 +3764,9 @@ static_cast < T > ( expression )，该运算符把expression转换为T类型，�
 > 进行下行转换（把基类指针或引用转换成派生类表示）时，由于没有动态类型检查，所以是不安全的
 
 2. **用于基本数据类型之间的转换，如把int转换成char，把char转换成int（这种转换的安全性也要开发人员来保证）**
+
+```cpp
+double a = 1.999;
+int b = static_cast<double>(a);
+```
+
