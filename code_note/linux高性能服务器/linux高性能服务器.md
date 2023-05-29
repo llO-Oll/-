@@ -1750,7 +1750,7 @@ int main(int argc, char* argv[])
     
     ret = bind(udpfd, (struct sockaddr*)&address, sizeof(address));
     assert(ret != -1);
-    
+
     epoll_event events[MAX_EVENT_NUMBER];
     int epollfd = epoll_create(5);
     assert(epollfd != -1);
@@ -2887,7 +2887,7 @@ private:
 /*	封装互斥锁的类	*/
 class locker
 {
-pubilc:
+public:
     /*	创建并初始化互斥锁	*/
     locker()
     {
@@ -2946,7 +2946,7 @@ class cond
         {
             int ret = 0;
             pthread_mutex_lock( &m_mutex );
-            pthread_mutex_cond_wait( &m_cond, &m_mutex );
+            ret = pthread_cond_wait( &m_cond, &m_mutex );
             pthread_mutex_unlock( &m_mutex );
             return ret == 0;
         }
@@ -3766,7 +3766,7 @@ public:
 
 private:
     /*	工作线程运行的函数， 它不断从工作队列中取出任务并执行之	*/
-    static void* worker( void arg );
+    static void* worker( void* arg );
     void run();
     
 private:
@@ -3800,12 +3800,12 @@ threadpool< T >::threadpool( int thread_number, int max_requests ):m_thread_numb
         if( pthread_create( m_threads + i, NULL, worker, this ) != 0 )
         {
             delete [] m_threads;
-            throw std::exception;
+            throw std::exception();
         }
         if( pthread_detach( m_threads[i] ) )
         {
             delete [] m_threads;
-            throw std::exception;
+            throw std::exception();
         }
     }
 }
@@ -3911,11 +3911,11 @@ enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0,
 enum HTTP_CODE { NO_REQUEST, GET_REQUEST, BAD_REQUEST, NO_RESOURCE,
                FORBIDDEN_REQUEST, FILE_REQUEST, INTERNAL_ERROR, CLOSED_CONNECTION };
 /*	行的读取状态	*/	
-enum LINE_STATUS { LINE_OK = 0, LINE_BAD }
+enum LINE_STATUS { LINE_OK = 0, LINE_BAD, LINE_OPEN };
     
 public:
-    http_conn(){};
-    ~http_conn(){};
+    http_conn(){}
+    ~http_conn(){}
 public:
 	/*	初始化新接受的连接 */
     void init( int sockfd, const sockaddr_in& addr );
@@ -3973,7 +3973,7 @@ private:
     /*	当前正在解析的行的起始位置	*/
     int m_start_line;
     /*	写缓冲区	*/
-    char m_write_buf[ WRITE_BUFFER-SIZE ];
+    char m_write_buf[ WRITE_BUFFER_SIZE ];
     /*	写缓冲区中待发送的字节数	*/
     int m_write_idx;
     
@@ -4009,6 +4009,8 @@ private:
 ```cpp
 //filename: http_conn.cpp
 #include "http_conn.h"
+#include<stdlib.h>
+#include <sys/uio.h>
 
 /*	定义HTTP响应的一些状态信息	*/
 const char* ok_200_title = "OK";
@@ -4050,6 +4052,7 @@ void removefd( int epollfd, int fd )
     close( fd );
 }
 
+/*		重置fd	*/
 void modfd( int epollfd, int fd, int ev )
 {
     epoll_event event;
@@ -4060,6 +4063,18 @@ void modfd( int epollfd, int fd, int ev )
 
 int http_conn::m_user_count = 0;
 int http_conn::m_epollfd = -1;
+
+
+void http_conn::close_conn(bool real_close)
+{
+	if(real_close && ( m_sockfd != -1 ) )
+	{
+		removefd(m_epollfd, m_sockfd);
+		m_sockfd = -1;
+		m_user_count--;	//关闭一个连接时，客户总量减1
+	}
+}
+
 
 void http_conn::init( int sockfd, const sockaddr_in& addr )
 {
@@ -4367,9 +4382,359 @@ bool http_conn::write()
         temp = writev( m_sockfd, m_iv, m_iv_count );
         if( temp <= -1 )
         {
-            
+        	/*	如果TCP写缓冲没有空间，则等待下一轮EPOLLOUT事件。虽然在此期间，服务器无法立即接收到同一客户的下一个请求，但这可以保证连接的完整性	*/
+        	if( errno == EAGAIN )
+            {
+                // 重置监听事件 并 添加EPOLLOUT事件到监听事件集
+                modfd( m_epollfd, m_sockfd, EPOLLOUT );
+                return true;
+            }
+            unmap();
+            return false;
+        }
+        bytes_to_send -= temp;
+        bytes_have_send += temp;
+        if( bytes_to_send <= bytes_have_send )
+        {
+            /*	发送HTTP响应成功，根据HTTP请求中的Connection字段是否立即关闭连接	*/
+            unmap();
+            /*	bool m_linger	HTTP请求是否要求保持连接	*/
+            if( m_linger )
+            {
+            	init();
+            	modfd( m_epollfd, m_sockfd, EPOLLIN );
+            	return true;
+            }
+            else
+            {
+                modfd( m_epollfd, m_sockfd, EPOLLIN );
+                return false;
+            }
         }
     }
 }
+
+/*	往写缓冲中写入待发送的数据	*/
+bool http_conn::add_response( const char* format, ... )
+{
+    if( m_write_idx >= WRITE_BUFFER_SIZE )
+    {
+    	return false;
+    }
+	va_list arg_list;
+	va_start( arg_list, format );
+	int len = vsnprintf( m_write_buf + m_write_idx, WRITE_BUFFER_SIZE - 1 - m_write_idx, format, arg_list );
+    if( len >= ( WRITE_BUFFER_SIZE - 1 - m_write_idx ) )
+    {
+        return false;
+    }
+    m_write_idx += len;
+    va_end( arg_list );
+    return true;
+}
+
+bool http_conn::add_status_line( int status, const char* title )
+{
+    return add_response( "%s %d %s\r\n","HTTP/1.1", status, title );
+}
+
+bool http_conn::add_headers(int content_len)
+{
+	add_content_length( content_len );
+	add_linger();
+	add_blank_line();
+} 
+bool http_conn::add_content_length( int content_len )
+{
+    return add_response("Content-Length: %d\r\n", content_len);
+}
+
+bool http_conn::add_linger()
+{
+    return add_response("Connection: %s\r\n", ( m_linger == true ) ? "keep-alive" : "close" );
+}
+
+bool http_conn::add_blank_line()
+{
+    return add_response("%s", "\r\n");
+}
+
+bool http_conn::add_content( const char* content )
+{
+    return add_response("%s", content);
+}
+
+/*	根据服务器处理HTTP请求的结果，决定返回给客户端的内容	*/
+bool http_conn::process_write( HTTP_CODE ret )
+{
+	switch( ret )
+    {
+        case INTERNAL_ERROR:
+        {
+        	add_status_line( 500, error_500_title );
+        	add_headers( strlen( error_500_form ) );
+        	if( !add_content( error_500_form ) )
+            {
+                return false;
+            }
+            break;
+        }
+        case BAD_REQUEST:
+        {
+        	add_status_line( 400, error_400_title );
+        	add_headers( strlen( error_400_form ) );
+            if( ! add_content( error_400_form ) )
+            {
+                return false;
+            }
+            break;
+        }
+        case NO_RESOURCE:
+        {
+        	add_status_line( 404, error_404_title );
+        	add_headers( strlen( error_404_form ) );
+            if( ! add_content( error_404_form ) )
+            {
+                return false;
+            }
+            break;
+        }
+        case FORBIDDEN_REQUEST:
+        {
+        	add_status_line( 403, error_403_title );
+        	add_headers( strlen( error_403_form ) );
+        	if( ! add_content( error_403_form ) )
+            {
+                return false;
+            }
+            break;
+        }
+        case FILE_REQUEST:
+        {
+        	add_status_line( 200, ok_200_title );
+            if( m_file_stat.st_size != 0 )
+            {
+                add_headers( m_file_stat.st_size );
+                m_iv[0].iov_base = m_write_buf;
+                m_iv[0].iov_len = m_write_idx;
+                m_iv[1].iov_base = m_file_address;
+                m_iv[1].iov_len = m_file_stat.st_size;
+                m_iv_count = 2;
+                return true;
+            }
+            else
+            {
+                const char* ok_string = "<html><body></body></html>";
+                add_headers( strlen( ok_string ) );
+                if( ! add_content( ok_string ) )
+                {
+                    return false;
+                }
+            }
+        }
+        default:
+        {
+        	return false;        
+        }
+    }
+    m_iv[0].iov_base = m_write_buf;
+    m_iv[0].iov_len = m_write_idx;
+    m_iv_count = 1;
+    return true;
+}
+
+/*	由线程池中的工作线程调用，这是处理HTTP请求的入口函数	*/
+void http_conn::process()
+{
+    HTTP_CODE read_ret = process_read();
+    if( read_ret == NO_REQUEST )
+    {
+    	modfd( m_epollfd, m_sockfd, EPOLLIN );
+    	return;
+    }
+    bool write_ret = process_write( read_ret );
+    if( !write_ret )
+    {
+        close_conn();
+    }
+    modfd( m_epollfd, m_sockfd, EPOLLOUT );
+}
+
+
+
+```
+
+
+
+### main函数
+
+```c
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <cassert>
+#include <sys/epoll.h>
+
+#include "locker.h"
+#include "threadpool.h"
+#include "http_conn.h"
+
+#define MAX_FD 65535
+#define MAX_EVENT_NUMBER 10000
+
+extern int addfd( int epollfd, int fd, bool one_shot );
+extern int removefd( int epollfd, int fd );
+
+void addsig( int sig, void( handler )(int),  bool restart = true)
+{
+    struct sigaction sa;
+    memset( &sa, '\0', sizeof( sa ) );
+    sa.sa_handler = handler;
+    if( restart )
+    {
+        sa.sa_flags |= SA_RESTART;
+    }
+    sigfillset( &sa.sa_mask );
+	assert( sigaction( sig, &sa, NULL ) != -1 );
+}
+
+void show_error( int connfd, const char* info )
+{
+    printf( "%s", info );
+    send( connfd, info, strlen( info ), 0 );
+    close( connfd );
+}
+
+int main( int argc, char* argv[] )
+{
+    if( argc <= 2 )
+    {
+        printf("usage: %s ip_address port_number\n", basename(argv[0]));
+        return 1;
+    }
+    const char* ip = argv[1];
+    int port = atoi( argv[2] );
+    
+	/*	忽略SIGPIPE信号	*/
+    addsig( SIGPIPE, SIG_IGN );
+    
+    /*	创建线程池	*/
+    threadpool< http_conn >* pool = NULL;
+    try
+    {
+        pool = new threadpool< http_conn >;
+    }
+    catch(...)
+    {
+        return 1;
+    }
+    
+    /*	预先为每个可能的客户连接分配一个http_conn对象	*/
+    http_conn* users = new http_conn[ MAX_FD ];
+    assert( users );
+    int user_count = 0;
+    
+    int listenfd = socket( PF_INET, SOCK_STREAM, 0 );
+    assert( listenfd >= 0 );
+    struct linger tmp = {1, 0};
+    setsockopt( listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof( tmp ) );
+    
+    int ret = 0;
+    struct sockaddr_in address;
+    bzero( &address, sizeof( address ) );
+    address.sin_family = AF_INET;
+    inet_pton( AF_INET, ip, &address.sin_addr );
+    address.sin_port = htons( port );
+    
+    ret = bind( listenfd, ( struct sockaddr* )&address, sizeof( address ) );
+    assert( ret >= 0 );
+    
+    ret = listen( listenfd, 5 );
+    assert( ret >= 0 );
+    
+    epoll_event events[ MAX_EVENT_NUMBER ];
+    int epollfd = epoll_create(5);
+    assert( epollfd != -1 );
+    addfd( epollfd, listenfd, false );
+    http_conn::m_epollfd = epollfd;
+    
+    while( true )
+    {
+        int number = epoll_wait( epollfd, events, MAX_EVENT_NUMBER, -1 );
+        if( ( number < 0 ) && ( errno != EINTR ) )
+        {
+        	printf( "epoll failur\n" );
+        	break;
+        }
+        for( int i=0; i<number; i++ )
+        {
+            int sockfd = events[i].data.fd;
+            if( sockfd == listenfd )
+            {
+            	struct sockaddr_in client_address;
+            	socklen_t client_addrlength = sizeof( client_address );
+                int connfd = accept( listenfd, (struct sockaddr*)&client_address, &client_addrlength );
+                if( connfd < 0 )
+                {
+                    printf("errno is: %d\n", errno);
+                    continue;
+                }
+                if( http_conn::m_user_count >= MAX_FD )
+                {
+                    show_error( connfd, "Internal server busy" );
+                    continue;
+                }
+                /*	初始化客户连接	*/
+                users[connfd].init( connfd, client_address );
+            }
+            else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) )
+            {
+                /*	如果有异常，直接关闭客户连接	*/
+                users[sockfd].close_conn();
+            }
+            else if( events[i].events & EPOLLIN  )
+            {
+                /*	根据读的结果，决定是将任务添加到线程池，还是关闭连接	*/
+                if( users[sockfd].read() )
+                {
+                    pool->append( users + sockfd );
+                }
+                else
+                {
+                    users[sockfd].close_conn();
+                }
+	     }
+            else if( events[i].events & EPOLLOUT )
+            {
+                /*	根据写的结果，决定是否关闭连接	*/
+                if( !users[sockfd].write() )
+                {
+                    users[sockfd].close_conn();
+                }
+            }
+            else
+            {}
+        }
+    }
+ 	close( epollfd );
+    close( listenfd );
+    delete [] users;
+    delete pool;
+    return 0;
+}
+```
+
+`pthread`并非Linux系统的默认库，编译时注意加上`-lpthread`参数，以调用链接库
+
+我们再一次在终端输入：
+
+```
+g++ httpWebServer.cpp http_conn.cpp -o httpWebServer -lpthread
 ```
 
