@@ -4738,3 +4738,306 @@ int main( int argc, char* argv[] )
 g++ httpWebServer.cpp http_conn.cpp -o httpWebServer -lpthread
 ```
 
+# 设计模式
+
+## 单例模式
+
+保证一个类仅有一个实例，并提供一个访问它的全局访问点，该实例被所有程序模块共享。
+
+实现思路：私有化它的构造函数，以防止外界创建单例类的对象；使用类的私有静态指针变量指向类的唯一实例，并用一个公有的静态方法获取该实例。
+
+- 懒汉模式
+
+  即非常懒，不用的时候不去初始化，所以在第一次被使用时才进行初始化（实例的初始化放在`getinstance`函数内部）
+
+  - 经典的线程安全懒汉模式，使用双检测锁模式（`p == NULL`检测了两次）
+  - 利用局部静态变量实现线程安全懒汉模式
+
+- 饿汉模式：即迫不及待，在程序运行时立即初始化（实例的初始化放在`getinstance`函数外部，`getinstance`函数仅返回该唯一实例的指针）。
+
+
+
+## 懒汉模式
+
+加锁的懒汉模式是线程安全的，有以下两种方法
+
+### 方法1：返回普通指针
+
+```cpp
+//	头文件
+class SingleInstance
+{
+public:
+    //	获取单实例对象
+    static SingleInstance *GetInstance();
+    
+    //	释放单实例，进程退出时调用
+    static void deleteInstance();
+    
+    //	打印实例地址
+    void Print();
+
+private:
+    //	将其构造和析构称为私有的，禁止外部构造和析构
+    SingleInstance();
+    ~SingleInstance();
+    
+    //	将其拷贝构造和赋值构造成为私有函数，禁止外部拷贝和赋值
+    SingleInstance(const SingleInstance &signal);
+    const SingleInstance &operator=(const SingleInstance &signal);
+
+private:
+    // 唯一单实例对象指针
+    static SingleInstance *m_SingleInstance;
+    static std::mutex m_Mutex;
+}
+```
+
+```cpp
+//	源文件
+
+//	初始化静态成员变量
+SingleInstance *SingleInstance::m_SingleInstance = nullptr;
+std::mutex SingleInstance::m_Mutex;
+
+//	
+SingleInstance * SingleInstance::GetInstance()
+{
+    //	这里使用了两个if判断语句的技术称为双检锁；好处是，只有判断指针为空的时候才加锁
+    //	避免每次调用GetInstance的方法都加锁，锁的开销毕竟还是有点大的。
+    if(m_SingleInstance = nullptr)
+    {
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        if( m_SingleInstance == nullptr )
+        {
+            m_SingleInstance = new (std::nothrow) SingleInstance();	//new (std::nothrow) 在分配内存失败时会返回一个空指针。
+        }
+    }
+    return m_SingleInstance;
+}
+
+void SingleInstance::deleteInstance()
+{
+    std::unique_lock<std::mutex> lock(m_Mutex);	//加锁
+    if(m_SingleInstance)
+    {
+        delete m_SingleInstance;
+        m_SingleInstance = nullptr;
+    }
+}
+
+void SingleInstance::Print()
+{
+	std::cout << "我的实例内存地址是：" << this <<std::endl;
+}
+
+SingleInstance::~SingleInstance()
+{
+    std::cout << "析构函数" << std::endl;
+}
+```
+
+### 方法2：返回智能指针
+
+```cpp
+#include <iostream>
+#include <memory>
+#include <mutex>
+
+class Singleton {
+public:
+    static std::shared_ptr<Singleton> getSingleton();
+    void print(){
+        std::cout<<"Hello World."<<std::endl;
+    }
+    ~Singleton(){
+        std::cout<<__PRETTY_FUNCTION__<<std::endl;
+    }
+private:
+    Singleton(){
+        std::cout<<__PRETTY_FUNCTION__<<std::endl;
+    }
+};
+
+static std::shared_ptr<Singleton> singleton = nullptr;
+static std::mutex singletonMutex;
+
+std::shared_ptr<Singleton> Singleton::getSingleton(){
+    if(singleton == nullptr){
+        std::unique_lock<std::mutex> lock(singletonMutex);
+        if(singleton == nullptr){
+            singleton = std::shared_ptr<Singleton>(new Singleton());
+        }
+    }
+    return singleton;
+}
+
+```
+
+
+
+### 静态局部变量的懒汉单例(C++11线程安全)
+
+在C++11之前的标准中并没有规定local static变量的内存模型。于是乎它就是不是线程安全的了。但是在C++11却是线程安全的，这是因为新的C++标准规定了当一个线程正在初始化一个变量的时候，其他线程必须得等到该初始化完成以后才能访问它。
+
+```cpp
+//	头文件
+class Single
+{
+public:
+    //	获取单实例对象
+    static Single GetInstance();
+    
+    //	打印实例地址
+    void Print();
+private:
+    //	禁止外部构造
+    Single();
+    
+    //	禁止外部析构
+    ~Single();
+    
+    //	禁止外部拷贝构造
+    Single(const Single &signal);
+    
+    //	禁止外部赋值操作
+    const Single &operator=(const Single &signal);
+};
+
+```
+
+```cpp
+//	源文件
+Single Single::GetInstance()
+{
+	/*
+    	局部静态特性的方式实现单例。
+    	静态局部变量只在当前函数内有效，其他函数无法访问。
+    	静态局部变量只在第一次被调用的时候初始化，也存储在静态存储区，生命周期从第一次被初始化起至程序结束止。
+	*/
+    static Single signal:
+    return signal;
+}
+
+void Single::Print()
+{
+    std::cout<<"我的实例内存地址是：" << this << std::endl;
+}
+
+Single::Single()
+{
+    std::cout<<"构造函数"<<std::endl;
+}
+Single::~Single()
+{
+    std::cout<<"析构函数"<<std::endl;
+}
+```
+
+但是，这种方法也有点问题：在多线程场景下还是有可能会存在线程安全的问题，因为多线程同时调用 `GetInstance()` 方法有可能还是会产生竞争。
+
+解决这个问题的一种做法是：在程序的单线程启动阶段就调用 `GetInstance()` 方法。
+
+## 饿汉模式（本身就线程安全）
+
+```cpp
+//	头文件
+class Singleton
+{
+public:
+    //	获取单实例
+    static Singleton* GetInstance();
+    
+    //	释放单实例，进程退出时调用
+    static void deleteInstance();
+    
+    //	打印实例地址
+    void Print();
+private:
+    //	将其构造和析构成为私有的，禁止外部构造和析构
+    Singleton();
+    ~Singleton();
+    
+    //	将其拷贝构造和赋值成为私有函数，禁止外部拷贝和赋值
+    Singleton(const Singleton &signal);
+    const Singleton &operator=(const Singleton &signal);
+
+private:
+    //	唯一单实例对象指针
+    static Singleton *g_pSingleton;
+}
+```
+
+```cpp
+//	源文件
+
+//	代码一运行就初始化创建实例，本身就线程安全
+Singleton* Singleton::g_pSingleton = new (std::nothrow) Singleton();
+
+Singleton* Singleton::GetInstance()
+{
+    return g_pSingleton;
+}
+
+void Singleton::deleteInstance()
+{
+	if(g_pSingleton)
+    {
+        delete g_pSingleton;
+        g_pSingleton = nullptr;
+    }
+}
+
+void Singleton::Print()
+{
+    std::cout<<"我的实例内存地址是：" << this << std::endl;
+}
+
+Singleton::Singleton()
+{
+    std::cout<<"构造函数"<<std::endl;
+}
+Singleton::~Singleton()
+{
+    std::cout<<"析构函数"<<std::endl;
+}
+
+```
+
+
+
+## 使用 C++11 std::call_once 实现单例（C++11线程安全）
+
+```cpp
+#include <iostream>
+#include <memory>
+#include <mutex>
+
+class Singleton {
+public:
+    static std::shared_ptr<Singleton> getSingleton();
+    
+    void print(){
+        std::cout<<"Hello World."<<std::endl;
+    }
+    
+    ~Singleton(){
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
+    }
+private:
+    Singleton() {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
+    }
+};
+
+static std::shared_ptr<Singleton> singleton = nullptr;
+static std::once_flag singletonFlag;
+
+std::shared_ptr<Singleton> Singleton::getSingleton(){
+    std::call_once(singletonFlag, [&] {
+        singleton = std::shared_ptr<Singleton>(new Singleton());
+    });
+    return singleton;
+}
+```
+
