@@ -1,52 +1,46 @@
-#include<iostream>
-#include<string>
-#include<vector>
+#include <iostream>
+#include <vector>
+#include <unordered_set>
 using namespace std;
-class Solution {
-public:
-    string minWindow(string s, string t) {
-        // chars[i] 记录t中第i个字母当前缺少个数
-        vector<int> chars(128,0);
-        vector<bool> flag(128,false);
-        for(const char c : t){
-            flag[c] = true;
-            chars[c]++;
+vector<vector<int>> result;
+vector<int> path;
+void backtracking(vector<int>& nums, int startIndex){
+    if(path.size()>0){
+        result.push_back(path);
+        for(int i=0;i<path.size();i++){
+            cout<<path[i];
         }
-        int l = 0;
-        int r = 0;
-        int ans = 0;
-        int min_len = s.size()+1;
-        int min_l = l;
-        for(r = 0; r < s.size(); r++){
-            // s中匹配到t中字符s[r],chars[s[r]]--
-            if(flag[s[r]]){
-                if(chars[s[r]]>0){    
-                    ans++;   
-                }
-                chars[s[r]]--;
-            }
-
-            // 若匹配到所有t中字符串，尝试令l右移
-            while( ans == t.size()){
-                if(r-l+1 < min_len){
-                    min_l = l;
-                    min_len = r-l+1;
-                }
-                if(flag[s[l]]){
-                    chars[s[l]]++;
-                    if(chars[s[l]]>0){    
-                        ans--;   
-                    } 
-                }
-                l++;
-            }
-        }
-        return min_len > s.size()?"":s.substr(min_l,min_len);
+        cout<<endl;
     }
-};
-
-int main(){
-    string s = "ADOBECODEBANC",t = "ABC";
-    Solution slt;
-    slt.minWindow(s,t);
+    if(startIndex>=nums.size()){
+        return;
+    }
+    path.push_back(nums[startIndex]);
+    backtracking(nums,startIndex+1);
+    path.pop_back(); 
 }
+int main() {
+    int n;
+    cin>>n;
+    vector<int> a,b;
+    for(int i=0;i<n;i++){
+        int temp;
+        cin>>temp;
+        a.push_back(temp);
+    }
+    for(int i=0;i<n;i++){
+        int temp;
+        cin>>temp;
+        b.push_back(temp);
+    }
+    for(int i=0;i<n;i++){
+        backtracking(a,i);
+    }
+    for(int i=0;i<n;i++){
+        backtracking(a,i);
+    }
+    
+    cout<<result.size();
+    return 0;
+}
+// 64 位输出请用 printf("%lld")
